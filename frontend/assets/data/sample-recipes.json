@@ -1,0 +1,165 @@
+[
+  {
+    "id": "1",
+    "title": "簡単スクランブルエッグ",
+    "description": "朝食にぴったりの、ふわふわスクランブルエッグのレシピです。",
+    "prepTime": "5分",
+    "cookTime": "10分",
+    "servings": 2,
+    "difficulty": "簡単",
+    "image": "https://images.unsplash.com/photo-1525351484163-7529414344d8?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&q=80",
+    "ingredients": [
+      {
+        "name": "卵",
+        "amount": "4個"
+      },
+      {
+        "name": "牛乳",
+        "amount": "大さじ2"
+      },
+      {
+        "name": "バター",
+        "amount": "10g"
+      },
+      {
+        "name": "塩",
+        "amount": "ひとつまみ"
+      },
+      {
+        "name": "こしょう",
+        "amount": "少々"
+      }
+    ],
+    "steps": [
+      {
+        "id": "1",
+        "description": "ボウルに卵を割り入れ、牛乳を加えて混ぜます。",
+        "image": "https://plus.unsplash.com/premium_photo-1718639707701-48347eae1bf3?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NXx8Ym93bCUyMGVnZyUyMG1pbGt8ZW58MHx8MHx8fDA%3D"
+      },
+      {
+        "id": "2",
+        "description": "塩とこしょうを加えて、さらに混ぜます。",
+        "image": "https://images.unsplash.com/photo-1621939514649-280e2ee25f60?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"
+      },
+      {
+        "id": "3",
+        "description": "フライパンを中火で熱し、バターを溶かします。",
+        "image": "https://plus.unsplash.com/premium_photo-1700004501343-2ad862ddf71d?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8cGFuJTIwYnV0dGVyfGVufDB8fDB8fHww"
+      },
+      {
+        "id": "4",
+        "description": "溶いた卵をフライパンに流し入れます。"
+      },
+      {
+        "id": "5",
+        "description": "木べらで全体を混ぜながら、火を通します。"
+      },
+      {
+        "id": "6",
+        "description": "半熟状態になったら火を止め、余熱で完成させます。",
+        "image": "https://plus.unsplash.com/premium_photo-1700004501791-277c61d2f4e4?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTUzfHwlRTMlODIlQjklRTMlODIlQUYlRTMlODMlQTklRTMlODMlQjMlRTMlODMlOTYlRTMlODMlQUIlRTMlODIlQTglRTMlODMlODMlRTMlODIlQjB8ZW58MHx8MHx8fDA%3D"
+      }
+    ],
+    "tips": [
+      "卵は常温に戻しておくとふんわり仕上がります。",
+      "混ぜすぎると固くなるので注意しましょう。"
+    ],
+    "tags": [
+      "朝食",
+      "卵料理",
+      "簡単"
+    ]
+  },
+  {
+    "id": "2",
+    "title": "基本のパスタ カルボナーラ",
+    "description": "クリーミーでリッチな味わいの本格カルボナーラです。",
+    "prepTime": "10分",
+    "cookTime": "15分",
+    "servings": 2,
+    "difficulty": "中級",
+    "image": "https://images.unsplash.com/photo-1612874742237-6526221588e3?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&q=80",
+    "ingredients": [
+      {
+        "name": "スパゲッティ",
+        "amount": "200g"
+      },
+      {
+        "name": "ベーコン",
+        "amount": "80g"
+      },
+      {
+        "name": "卵黄",
+        "amount": "2個"
+      },
+      {
+        "name": "パルメザンチーズ",
+        "amount": "30g"
+      },
+      {
+        "name": "にんにく",
+        "amount": "1片"
+      },
+      {
+        "name": "塩",
+        "amount": "適量"
+      },
+      {
+        "name": "黒こしょう",
+        "amount": "適量"
+      }
+    ],
+    "steps": [
+      {
+        "id": "1",
+        "description": "たっぷりの塩水を沸かし、スパゲッティを表示時間通りに茹でます。",
+        "image": "https://images.unsplash.com/photo-1498579150354-977475b7ea0b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"
+      },
+      {
+        "id": "2",
+        "description": "ベーコンを1cm幅に切り、にんにくはみじん切りにします。",
+        "image": "https://images.unsplash.com/photo-1573566291259-fd494a767b43?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"
+      },
+      {
+        "id": "3",
+        "description": "フライパンでにんにくを炒め、香りが出たらベーコンを加えて炒めます。",
+        "image": "https://images.unsplash.com/photo-1598514983318-2f64f8f4796c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"
+      },
+      {
+        "id": "4",
+        "description": "別のボウルに卵黄とパルメザンチーズを入れて混ぜておきます。",
+        "image": "https://images.unsplash.com/photo-1607198179219-10187166de7c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"
+      },
+      {
+        "id": "5",
+        "description": "茹で上がったパスタの茹で汁を少し取っておき、パスタをフライパンに加えます。",
+        "image": "https://images.unsplash.com/photo-1589227365533-cee630bd59bd?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"
+      },
+      {
+        "id": "6",
+        "description": "火を止め、卵黄とチーズの混ぜたものを加え、手早く混ぜます。",
+        "image": "https://images.unsplash.com/photo-1608219992759-8d74ed8d76eb?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"
+      },
+      {
+        "id": "7",
+        "description": "固くなりそうなら茹で汁を少し加えて調整します。",
+        "image": "https://images.unsplash.com/photo-1626200419199-391ae4be7a41?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"
+      },
+      {
+        "id": "8",
+        "description": "黒こしょうをたっぷりかけて完成です。",
+        "image": "https://images.unsplash.com/photo-1611269154421-4e27233ac5c7?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"
+      }
+    ],
+    "tips": [
+      "卵は火にかけすぎないよう、必ず火を止めてから加えましょう。",
+      "パスタの茹で汁を少し残しておくと、ソースがまとまりやすくなります。"
+    ],
+    "tags": [
+      "パスタ",
+      "イタリアン",
+      "ランチ",
+      "ディナー"
+    ]
+  }
+]
