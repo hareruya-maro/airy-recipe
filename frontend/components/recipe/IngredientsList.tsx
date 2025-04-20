@@ -33,7 +33,7 @@ export const IngredientsList: React.FC<IngredientsListProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 16,
+    margin: 16,
     borderRadius: 8,
     overflow: "hidden",
   },

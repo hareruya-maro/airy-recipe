@@ -20,6 +20,17 @@ export default function HomeLayout() {
           headerShown: false,
         }}
       />
+      {/* CookingModeをモーダル表示として設定 */}
+      <Stack.Screen
+        name="cookingMode"
+        options={{
+          title: "料理モード",
+          presentation: "fullScreenModal", // モーダル表示
+          animation: "slide_from_bottom", // 下からスライドアニメーション
+          headerShown: false,
+          gestureEnabled: true, // スワイプでモーダルを閉じることを許可
+        }}
+      />
     </Stack>
   );
 }

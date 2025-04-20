@@ -2,6 +2,7 @@ import Voice, {
   SpeechErrorEvent,
   SpeechResultsEvent,
 } from "@react-native-voice/voice";
+import * as Speech from "expo-speech"; // TTSのためのexpo-speechをインポート
 import { httpsCallable } from "firebase/functions";
 import { useEffect, useRef, useState } from "react";
 import { functions } from "../config/firebase";
@@ -28,12 +29,40 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
   const [isProcessingLLM, setIsProcessingLLM] = useState<boolean>(false);
   // 現在の認識テキストを保持するRef
   const currentTextRef = useRef<string>("");
+  // TTSが現在話しているかどうか
+  const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
   // debounceタイマーID
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   // 音声認識中かどうか
   const isProcessingRef = useRef<boolean>(false);
   // debounce時間（ミリ秒）
   const DEBOUNCE_TIME_MS = 800;
+
+  // TTSで文章を読み上げる関数
+  const speakResponse = async (text: string) => {
+    try {
+      // 現在話している場合は一旦停止
+      if (isSpeaking) {
+        await Speech.stop();
+      }
+
+      // 日本語で読み上げるようにオプションを設定
+      setIsSpeaking(true);
+      await Speech.speak(text, {
+        language: "ja-JP",
+        // 読み上げ完了時のコールバック
+        onDone: () => setIsSpeaking(false),
+        // エラー発生時のコールバック
+        onError: (error) => {
+          console.error("TTSエラー:", error);
+          setIsSpeaking(false);
+        },
+      });
+    } catch (e) {
+      console.error("TTSエラー:", e);
+      setIsSpeaking(false);
+    }
+  };
 
   // Firebase Functionsのプロセス関数
   const processVoiceCommandFunction = httpsCallable(
@@ -207,15 +236,19 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
       if (data.success && data.response) {
         console.log("LLM応答:", data.response);
         setLastAIResponse(data.response);
+        speakResponse(data.response); // TTSで応答を読み上げ
       } else {
         console.error("LLMエラー:", data.error);
-        setLastAIResponse(
-          "申し訳ありません、応答の処理中にエラーが発生しました"
-        );
+        const errorMessage =
+          "申し訳ありません、応答の処理中にエラーが発生しました";
+        setLastAIResponse(errorMessage);
+        speakResponse(errorMessage); // TTSでエラーメッセージを読み上げ
       }
     } catch (e: any) {
       console.error("LLM処理エラー:", e, e.message, (e as Error).name);
-      setLastAIResponse("申し訳ありません、処理中にエラーが発生しました");
+      const errorMessage = "申し訳ありません、処理中にエラーが発生しました";
+      setLastAIResponse(errorMessage);
+      speakResponse(errorMessage); // TTSでエラーメッセージを読み上げ
     } finally {
       setIsProcessingLLM(false);
     }
@@ -236,7 +269,9 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
       lowerText.includes("進める")
     ) {
       nextStep();
-      setLastAIResponse("次のステップに進みます");
+      const responseMessage = "次のステップに進みます";
+      setLastAIResponse(responseMessage);
+      speakResponse(responseMessage); // TTSで応答を読み上げ
       restartVoiceRecognition();
       return;
     } else if (
@@ -246,7 +281,9 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
       lowerText.includes("戻って")
     ) {
       previousStep();
-      setLastAIResponse("前のステップに戻ります");
+      const responseMessage = "前のステップに戻ります";
+      setLastAIResponse(responseMessage);
+      speakResponse(responseMessage); // TTSで応答を読み上げ
       restartVoiceRecognition();
       return;
     } else if (
@@ -255,7 +292,9 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
       lowerText.includes("ingredient")
     ) {
       // 材料リストを表示するための状態更新
-      setLastAIResponse("材料リストを表示します");
+      const responseMessage = "材料リストを表示します";
+      setLastAIResponse(responseMessage);
+      speakResponse(responseMessage); // TTSで応答を読み上げ
       // コールバック関数が提供されている場合は実行
       if (callbacks?.onShowIngredients) {
         callbacks.onShowIngredients(true);
@@ -269,7 +308,9 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
       lowerText.includes("step")
     ) {
       // 手順リストを表示するための状態更新
-      setLastAIResponse("手順リストを表示します");
+      const responseMessage = "手順リストを表示します";
+      setLastAIResponse(responseMessage);
+      speakResponse(responseMessage); // TTSで応答を読み上げ
       // 材料表示を無効にする（コールバックが提供されている場合）
       if (callbacks?.onShowIngredients) {
         callbacks.onShowIngredients(false); // 材料を非表示（手順を表示）

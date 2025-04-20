@@ -1,10 +1,9 @@
 import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { Image, ScrollView, StyleSheet, View } from "react-native";
 import { Appbar, Button, Chip, Text } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Recipe, useRecipeStore } from "../../store/recipeStore";
-import { CookingMode } from "./CookingMode";
 import { IngredientsList } from "./IngredientsList";
 import { StepsList } from "./StepsList";
 
@@ -15,7 +14,6 @@ type RecipeDetailProps = {
 export const RecipeDetail: React.FC<RecipeDetailProps> = ({ recipe }) => {
   const { currentStepIndex, nextStep, previousStep, setCurrentRecipe } =
     useRecipeStore();
-  const [cookingModeActive, setCookingModeActive] = useState(false);
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -24,20 +22,10 @@ export const RecipeDetail: React.FC<RecipeDetailProps> = ({ recipe }) => {
     setCurrentRecipe(recipe);
   }, [recipe]);
 
-  // 料理中モードを開始
+  // 料理中モードを開始（Expo Routerでのモーダル表示に変更）
   const startCookingMode = () => {
-    setCookingModeActive(true);
+    router.push("/(drawer)/(home)/cookingMode");
   };
-
-  // 料理中モードを終了
-  const closeCookingMode = () => {
-    setCookingModeActive(false);
-  };
-
-  // 料理中モードが有効ならそちらを表示
-  if (cookingModeActive) {
-    return <CookingMode onClose={closeCookingMode} />;
-  }
 
   // 通常のレシピ詳細表示
   return (

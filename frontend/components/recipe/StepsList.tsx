@@ -133,7 +133,7 @@ export const StepsList: React.FC<StepsListProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 16,
+    margin: 16,
     borderRadius: 8,
     overflow: "hidden",
     padding: 16,
