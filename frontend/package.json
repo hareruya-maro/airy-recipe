@@ -6,6 +6,7 @@
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
     "build:local:ios:develop": "eas build -p ios --profile development --local",
+    "build:local:ios:device": "eas build -p ios --profile device --local",
     "build:local:ios:preview": "eas build -p ios --profile preview --local",
     "android": "expo start --android",
     "ios": "expo start --ios",
@@ -22,6 +23,7 @@
     "@react-navigation/bottom-tabs": "^7.2.0",
     "@react-navigation/drawer": "^7.1.1",
     "@react-navigation/native": "^7.0.14",
+    "@shopify/react-native-skia": "^1.12.4",
     "expo": "~52.0.46",
     "expo-blur": "~14.0.3",
     "expo-constants": "~17.0.8",
@@ -30,6 +32,7 @@
     "expo-font": "~13.0.4",
     "expo-haptics": "~14.0.1",
     "expo-keep-awake": "^14.0.3",
+    "expo-linear-gradient": "~14.0.2",
     "expo-linking": "~7.0.5",
     "expo-router": "~4.0.20",
     "expo-speech": "~13.0.1",
@@ -49,8 +52,7 @@
     "react-native-screens": "~4.4.0",
     "react-native-web": "~0.19.13",
     "react-native-webview": "13.12.5",
-    "zustand": "^5.0.3",
-    "expo-linear-gradient": "~14.0.2"
+    "zustand": "^5.0.3"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

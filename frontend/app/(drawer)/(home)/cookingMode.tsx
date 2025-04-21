@@ -1,9 +1,21 @@
 import { Ionicons } from "@expo/vector-icons";
+import {
+  Canvas,
+  Rect,
+  LinearGradient as SkiaGradient,
+  vec,
+} from "@shopify/react-native-skia";
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useNavigation } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
-import { SafeAreaView, ScrollView, StyleSheet, View } from "react-native";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import {
+  Dimensions,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  View,
+} from "react-native";
 import {
   ActivityIndicator,
   Appbar,
@@ -13,10 +25,25 @@ import {
   Text,
   useTheme,
 } from "react-native-paper";
+import {
+  useDerivedValue,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 import { IngredientsList } from "../../../components/recipe/IngredientsList";
 import { StepsList } from "../../../components/recipe/StepsList";
 import { useVoiceRecognition } from "../../../hooks/useVoiceRecognition";
 import { useRecipeStore } from "../../../store/recipeStore";
+
+const getRandomColor = () => {
+  // Generate random RGB color values
+  const r = Math.floor(Math.random() * 156 + 100);
+  const g = Math.floor(Math.random() * 100 + 50);
+  const b = Math.floor(Math.random() * 156 + 100);
+
+  // Return the color in the format 'rgba(r, g, b, 1)'
+  return `rgba(${r}, ${g}, ${b}, 1)`;
+};
 
 export default function CookingModeScreen() {
   const {
@@ -32,6 +59,14 @@ export default function CookingModeScreen() {
   const [showIngredients, setShowIngredients] = useState(false);
   const navigation = useNavigation();
   const theme = useTheme();
+
+  const { width, height } = Dimensions.get("window");
+  const leftColor = useSharedValue("#2c3e50");
+  const rightColor = useSharedValue("#1a1a2e");
+
+  const colors = useDerivedValue(() => {
+    return [leftColor.value, rightColor.value];
+  }, []);
 
   // 料理モード中はスリープを防止するためのkeep awake機能
   useEffect(() => {
@@ -74,10 +109,21 @@ export default function CookingModeScreen() {
     router.back();
   };
 
+  const interval = useRef<NodeJS.Timeout | null>(null);
+
   const toggleVoiceRecognition = async () => {
     if (isListening) {
       await stopVoiceRecognition();
+      clearInterval(interval.current!);
+      leftColor.value = withTiming("#2c3e50", { duration: 300 });
+      rightColor.value = withTiming("#1a1a2e", { duration: 300 });
     } else {
+      const duration = 2000;
+      interval.current = setInterval(() => {
+        leftColor.value = withTiming(getRandomColor(), { duration: duration });
+        rightColor.value = withTiming(getRandomColor(), { duration: duration });
+      }, duration);
+
       await startVoiceRecognition();
     }
   };
@@ -99,10 +145,21 @@ export default function CookingModeScreen() {
   }
 
   return (
-    <LinearGradient
-      colors={["#2c3e50", "#1a1a2e"]}
-      style={styles.gradientContainer}
-    >
+    <View style={{ flex: 1 }}>
+      <View style={styles.flowingGradientWrapper}>
+        <Canvas style={{ flex: 1 }}>
+          <Rect x={0} y={0} width={width} height={height}>
+            <SkiaGradient
+              start={vec(0, 0)}
+              end={vec(width, height)}
+              colors={colors}
+            />
+          </Rect>
+        </Canvas>
+      </View>
+      {/* 音声認識中のみ表示される下から上に流れるグラデーションアニメーション */}
+      {/* <FlowingGradient isActive={isListening} /> */}
+
       <Appbar.Header style={styles.transparentHeader}>
         <Appbar.Content
           title={currentRecipe.title}
@@ -153,10 +210,10 @@ export default function CookingModeScreen() {
         </ScrollView>
 
         {/* ボタン配置エリア */}
-        <SafeAreaView style={styles.buttonsContainer}>
+        <View style={styles.buttonsContainer}>
           {/* 音声操作ボタン（左側） */}
           <Button
-            mode="contained-tonal"
+            mode={isListening ? "contained" : "contained-tonal"}
             onPress={toggleVoiceRecognition}
             style={[styles.actionButton, isListening && styles.listeningButton]}
             icon={({ size, color }) =>
@@ -181,9 +238,9 @@ export default function CookingModeScreen() {
           >
             {showIngredients ? "手順を表示" : "材料を表示"}
           </Button>
-        </SafeAreaView>
+        </View>
       </SafeAreaView>
-    </LinearGradient>
+    </View>
   );
 }
 
@@ -262,5 +319,27 @@ const styles = StyleSheet.create({
   },
   listeningButton: {
     backgroundColor: "#ff6b6b",
+  },
+  // 流れるグラデーション用のスタイル
+  flowingGradientWrapper: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 0,
+    overflow: "hidden",
+    pointerEvents: "none", // タッチイベントを下層に通す
+  },
+  flowingGradientContainer: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    height: Dimensions.get("window").height * 2, // 画面の高さの2倍で流れるエリアを確保
+    zIndex: 0,
+  },
+  flowingGradient: {
+    width: "100%",
+    height: "100%",
   },
 });

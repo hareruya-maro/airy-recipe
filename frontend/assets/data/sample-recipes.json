@@ -161,5 +161,101 @@
       "ランチ",
       "ディナー"
     ]
+  },
+  {
+    "id": "3",
+    "title": "定番の味 肉じゃが",
+    "description": "ほっこり美味しい、家庭の定番肉じゃがです。",
+    "prepTime": "15分",
+    "cookTime": "25分",
+    "servings": 2,
+    "difficulty": "初級",
+    "image": "https://firebasestorage.googleapis.com/v0/b/airy-recipe.firebasestorage.app/o/public%2Fimages%2FGemini_Generated_Image_mz72g8mz72g8mz72.jpeg?alt=media&token=44abcbf5-7653-4f20-aecd-61dfc9c82da9",
+    "ingredients": [
+      {
+        "name": "じゃがいも",
+        "amount": "3個"
+      },
+      {
+        "name": "玉ねぎ",
+        "amount": "1/2個"
+      },
+      {
+        "name": "にんじん",
+        "amount": "1/2本"
+      },
+      {
+        "name": "牛肉（薄切りまたは切り落とし）",
+        "amount": "100g"
+      },
+      {
+        "name": "しらたき",
+        "amount": "100g"
+      },
+      {
+        "name": "サラダ油",
+        "amount": "大さじ1"
+      },
+      {
+        "name": "だし汁",
+        "amount": "1と1/2カップ"
+      },
+      {
+        "name": "しょうゆ",
+        "amount": "大さじ2"
+      },
+      {
+        "name": "みりん",
+        "amount": "大さじ2"
+      },
+      {
+        "name": "砂糖",
+        "amount": "大さじ1"
+      },
+      {
+        "name": "絹さや",
+        "amount": "適量"
+      }
+    ],
+    "steps": [
+      {
+        "id": "1",
+        "description": "じゃがいもは一口大に切って水にさらします。玉ねぎはくし形切り、にんじんは乱切り、しらたきは茹でて食べやすい長さに切ります。",
+        "image": "https://firebasestorage.googleapis.com/v0/b/airy-recipe.firebasestorage.app/o/public%2Fimages%2FGemini_Generated_Image_fxq0zafxq0zafxq0.jpeg?alt=media"
+      },
+      {
+        "id": "2",
+        "description": "鍋にサラダ油を熱し、玉ねぎ、牛肉を炒めます。牛肉の色が変わったら、にんじん、じゃがいも、しらたきを加えて炒め合わせます。",
+        "image": "https://firebasestorage.googleapis.com/v0/b/airy-recipe.firebasestorage.app/o/public%2Fimages%2FGemini_Generated_Image_x6lndnx6lndnx6ln.jpeg?alt=media"
+      },
+      {
+        "id": "3",
+        "description": "だし汁、しょうゆ、みりん、砂糖を加えて煮立たせ、アクを取り除きます。",
+        "image": "https://firebasestorage.googleapis.com/v0/b/airy-recipe.firebasestorage.app/o/public%2Fimages%2FGemini_Generated_Image_nof46rnof46rnof4.jpeg?alt=media&token=e697a234-ae65-46c8-8cfa-e1c36d059d26"
+      },
+      {
+        "id": "4",
+        "description": "落し蓋をして、弱火で15〜20分、じゃがいもが柔らかくなるまで煮ます。",
+        "image": "https://firebasestorage.googleapis.com/v0/b/airy-recipe.firebasestorage.app/o/public%2Fimages%2FGemini_Generated_Image_hrofpxhrofpxhrof.jpeg?alt=media&token=021abfc4-78eb-4133-9c1e-397348ff9e79"
+      },
+      {
+        "id": "5",
+        "description": "火を止めて、しばらく置いて味を染み込ませます。器に盛り付け、お好みで茹でた絹さやを添えて完成です。",
+        "image": "https://firebasestorage.googleapis.com/v0/b/airy-recipe.firebasestorage.app/o/public%2Fimages%2FGemini_Generated_Image_wj8p0awj8p0awj8p.jpeg?alt=media&token=16a51397-0b6e-4b9c-91de-e37661f2f1d2"
+      }
+    ],
+    "tips": [
+      "じゃがいもは水にさらすことで煮崩れを防ぎます。",
+      "炒めることで香ばしさが増し、煮崩れ防止にも繋がります。",
+      "落し蓋がない場合は、アルミホイルの中央に穴を開けて代用できます。",
+      "煮込んだ後、しばらく置くと味がより染み込み美味しくなります。"
+    ],
+    "tags": [
+      "和食",
+      "煮物",
+      "家庭料理",
+      "ランチ",
+      "ディナー"
+    ]
   }
 ]

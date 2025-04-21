@@ -7,11 +7,18 @@
  * See a full list of supported triggers at https://firebase.google.com/docs/functions
  */
 
+import { gemini20Flash, googleAI } from "@genkit-ai/googleai";
 import { Content, VertexAI } from "@google-cloud/vertexai";
 import cors from "cors";
 import * as logger from "firebase-functions/logger";
 import { onCall, onRequest } from "firebase-functions/v2/https";
+import { genkit } from "genkit";
 
+// configure a Genkit instance
+const ai = genkit({
+  plugins: [googleAI()],
+  model: gemini20Flash, // set default model
+});
 // CORS設定
 const corsHandler = cors({ origin: true });
 
@@ -53,6 +60,7 @@ const generativeModel = vertexAI.getGenerativeModel({
 export const processVoiceCommand = onCall(
   {
     maxInstances: 10,
+    secrets: ["GEMINI_API_KEY"],
   },
   async (request) => {
     try {
@@ -90,6 +98,12 @@ export const processVoiceCommand = onCall(
           topK: 40,
         },
       });
+
+      const { text: testResult } = await ai.generate(
+        RECIPE_ASSISTANT_PROMPT + `${contextInfo}\n\nユーザーの質問: ${text}`
+      );
+
+      console.log("LLM応答:", testResult);
 
       // レスポンスを取得
       const response = result.response;
