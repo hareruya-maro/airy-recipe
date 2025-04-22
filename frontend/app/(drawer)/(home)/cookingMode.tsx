@@ -1,16 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
-import {
-  Canvas,
-  Rect,
-  LinearGradient as SkiaGradient,
-  vec,
-} from "@shopify/react-native-skia";
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Dimensions,
   FlatList,
   SafeAreaView,
   ScrollView,
@@ -21,35 +14,24 @@ import {
   ActivityIndicator,
   Appbar,
   Button,
-  Dialog,
   IconButton,
   Portal,
   Surface,
   Text,
 } from "react-native-paper";
-import {
-  useDerivedValue,
-  useSharedValue,
-  withTiming,
-} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { IngredientsList } from "../../../components/recipe/IngredientsList";
 import { StepsList } from "../../../components/recipe/StepsList";
+import {
+  FlowingGradient,
+  FlowingGradientRef,
+} from "../../../components/ui/FlowingGradient";
+import PulsingDialog from "../../../components/ui/PulsingDialog";
 import { useVoiceRecognition } from "../../../hooks/useVoiceRecognition";
 import {
   ConversationMessage,
   useRecipeStore,
 } from "../../../store/recipeStore";
-
-const getRandomColor = () => {
-  // Generate random RGB color values
-  const r = Math.floor(Math.random() * 156 + 100);
-  const g = Math.floor(Math.random() * 100 + 50);
-  const b = Math.floor(Math.random() * 156 + 100);
-
-  // Return the color in the format 'rgba(r, g, b, 1)'
-  return `rgba(${r}, ${g}, ${b}, 1)`;
-};
 
 export default function CookingModeScreen() {
   const {
@@ -62,21 +44,15 @@ export default function CookingModeScreen() {
     setLastAIResponse,
     conversationHistory, // 会話履歴
     isDialogVisible, // ダイアログ表示状態
-    setDialogVisible, // ダイアログ表示状態を設定する関数
   } = useRecipeStore();
 
   const [showIngredients, setShowIngredients] = useState(false);
 
-  const { width, height } = Dimensions.get("window");
-  const leftColor = useSharedValue("#2c3e50");
-  const rightColor = useSharedValue("#1a1a2e");
+  // FlowingGradientコンポーネントへの参照
+  const flowingGradientRef = useRef<FlowingGradientRef>(null);
 
   // 会話履歴用のFlatListのリファレンス
   const flatListRef = useRef<FlatList>(null);
-
-  const colors = useDerivedValue(() => {
-    return [leftColor.value, rightColor.value];
-  }, []);
 
   const { bottom } = useSafeAreaInsets();
 
@@ -133,21 +109,18 @@ export default function CookingModeScreen() {
     router.back();
   };
 
-  const interval = useRef<NodeJS.Timeout | null>(null);
-
   const toggleVoiceRecognition = async () => {
     if (isListening) {
       await stopVoiceRecognition();
-      clearInterval(interval.current!);
-      leftColor.value = withTiming("#2c3e50", { duration: 300 });
-      rightColor.value = withTiming("#1a1a2e", { duration: 300 });
+      // グラデーションのアニメーションを停止
+      if (flowingGradientRef.current?.stopColorAnimation) {
+        flowingGradientRef.current.stopColorAnimation();
+      }
     } else {
-      const duration = 2000;
-      interval.current = setInterval(() => {
-        leftColor.value = withTiming(getRandomColor(), { duration: duration });
-        rightColor.value = withTiming(getRandomColor(), { duration: duration });
-      }, duration);
-
+      // グラデーションのアニメーションを開始
+      if (flowingGradientRef.current?.startColorAnimation) {
+        flowingGradientRef.current.startColorAnimation(2000);
+      }
       await startVoiceRecognition();
     }
   };
@@ -193,17 +166,8 @@ export default function CookingModeScreen() {
   return (
     <Portal.Host>
       <View style={{ flex: 1 }}>
-        <View style={styles.flowingGradientWrapper}>
-          <Canvas style={{ flex: 1 }}>
-            <Rect x={0} y={0} width={width} height={height}>
-              <SkiaGradient
-                start={vec(0, 0)}
-                end={vec(width, height)}
-                colors={colors}
-              />
-            </Rect>
-          </Canvas>
-        </View>
+        {/* バックグラウンドのフローグラデーション */}
+        <FlowingGradient ref={flowingGradientRef} />
 
         <Appbar.Header style={styles.transparentHeader}>
           <Appbar.Content
@@ -268,26 +232,16 @@ export default function CookingModeScreen() {
           {error ? <Text style={styles.errorText}>エラー: {error}</Text> : null}
         </ScrollView>
 
-        {/* 音声読み上げ中のダイアログ表示 */}
-        <Dialog
-          visible={(isDialogVisible && lastAIResponse !== null) || true}
-          dismissable={false}
-          style={styles.dialogContainer}
-        >
-          <Dialog.Title style={styles.dialogTitle}>AIry Recipe</Dialog.Title>
-          <Dialog.Content>
-            <Text style={styles.dialogText}>{lastAIResponse}</Text>
-          </Dialog.Content>
-          <Dialog.Actions>
-            {(isSpeaking || true) && (
-              <ActivityIndicator
-                animating={true}
-                color="#fff"
-                style={[styles.dialogLoader]}
-              />
-            )}
-          </Dialog.Actions>
-        </Dialog>
+        {/* 音声読み上げ中のダイアログ表示（パルスアニメーション付き） */}
+        <PulsingDialog
+          visible={isDialogVisible && lastAIResponse !== null}
+          title="AIry Recipe"
+          message={lastAIResponse}
+          isLoading={isSpeaking}
+          minOpacity={0.8}
+          maxOpacity={1.0}
+          pulseDuration={1000}
+        />
 
         {/* ボタン配置エリア */}
         <View style={[styles.buttonsContainer, { bottom: bottom + 8 }]}>
@@ -399,28 +353,6 @@ const styles = StyleSheet.create({
   listeningButton: {
     backgroundColor: "#ff6b6b",
   },
-  // 流れるグラデーション用のスタイル
-  flowingGradientWrapper: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 0,
-    overflow: "hidden",
-    pointerEvents: "none", // タッチイベントを下層に通す
-  },
-  flowingGradientContainer: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    height: Dimensions.get("window").height * 2, // 画面の高さの2倍で流れるエリアを確保
-    zIndex: 0,
-  },
-  flowingGradient: {
-    width: "100%",
-    height: "100%",
-  },
   // 会話履歴用のスタイル
   conversationContainer: {
     marginVertical: 12,
@@ -454,19 +386,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginTop: 4,
     color: "#fff",
-  },
-  // ダイアログ用のスタイル
-  dialogContainer: {
-    backgroundColor: "rgba(0, 0, 0, 0.8)",
-  },
-  dialogTitle: {
-    color: "#fff",
-  },
-  dialogText: {
-    color: "#fff",
-    fontSize: 24,
-  },
-  dialogLoader: {
-    marginLeft: 8,
   },
 });
