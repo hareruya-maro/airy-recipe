@@ -1,4 +1,3 @@
-import { Ionicons } from "@expo/vector-icons";
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
@@ -11,7 +10,6 @@ import {
   View,
 } from "react-native";
 import {
-  ActivityIndicator,
   Appbar,
   Button,
   IconButton,
@@ -22,11 +20,13 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { IngredientsList } from "../../../components/recipe/IngredientsList";
 import { StepsList } from "../../../components/recipe/StepsList";
+import { CookingTimer } from "../../../components/ui/CookingTimer";
 import {
   FlowingGradient,
   FlowingGradientRef,
 } from "../../../components/ui/FlowingGradient";
 import PulsingDialog from "../../../components/ui/PulsingDialog";
+import { useTimer } from "../../../hooks/useTimer";
 import { useVoiceRecognition } from "../../../hooks/useVoiceRecognition";
 import {
   ConversationMessage,
@@ -55,6 +55,14 @@ export default function CookingModeScreen() {
   const flatListRef = useRef<FlatList>(null);
 
   const { bottom } = useSafeAreaInsets();
+
+  // タイマー機能のhook
+  const {
+    processVoiceCommand,
+    processTimerDialogResponse,
+    isDialogVisible: isTimerDialogVisible,
+    showManualTimerDialogVisible,
+  } = useTimer();
 
   // 料理モード中はスリープを防止するためのkeep awake機能
   useEffect(() => {
@@ -93,6 +101,38 @@ export default function CookingModeScreen() {
     [showIngredients]
   );
 
+  // 音声認識の処理ハンドラー（タイマー機能を追加）
+  const handleVoiceRecognitionResult = useCallback(
+    (text: string) => {
+      // 現在のレシピ手順テキストを取得
+      const currentStepText =
+        currentRecipe?.steps?.[currentStepIndex]?.description || "";
+
+      // タイマー関連の音声コマンドを処理
+      if (isTimerDialogVisible) {
+        // タイマーダイアログが表示されている場合、確認応答を優先処理
+        if (processTimerDialogResponse(text)) {
+          return true; // 音声コマンドが処理された
+        }
+      } else {
+        // タイマー設定コマンドを処理
+        if (processVoiceCommand(text, currentStepText)) {
+          return true; // 音声コマンドが処理された
+        }
+      }
+
+      // その他の音声コマンド処理（既存のもの）
+      return false;
+    },
+    [
+      currentRecipe,
+      currentStepIndex,
+      isTimerDialogVisible,
+      processTimerDialogResponse,
+      processVoiceCommand,
+    ]
+  );
+
   // 音声認識フックにコールバックを渡す
   const {
     isListening,
@@ -102,6 +142,7 @@ export default function CookingModeScreen() {
     stopVoiceRecognition,
   } = useVoiceRecognition({
     onShowIngredients: (isShow: boolean) => handleToggleIngredients(isShow), // 材料表示
+    onVoiceRecognitionResult: handleVoiceRecognitionResult, // 音声認識結果ハンドラー（タイマー処理含む）
   });
 
   // モーダルを閉じる処理
@@ -178,6 +219,11 @@ export default function CookingModeScreen() {
         </Appbar.Header>
 
         <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content}>
+          {/* タイマーコンポーネント */}
+          <CookingTimer
+            currentStep={currentRecipe.steps[currentStepIndex]?.description}
+          />
+
           {showIngredients ? (
             <IngredientsList ingredients={currentRecipe.ingredients} />
           ) : (
@@ -250,16 +296,20 @@ export default function CookingModeScreen() {
             mode={isListening ? "contained" : "contained-tonal"}
             onPress={toggleVoiceRecognition}
             style={[styles.actionButton, isListening && styles.listeningButton]}
-            icon={({ size, color }) =>
-              isListening ? (
-                <ActivityIndicator animating={true} color={color} size={size} />
-              ) : (
-                <Ionicons name="mic" size={size} color={color} />
-              )
-            }
+            icon={isListening ? "ear-hearing" : "microphone"}
             contentStyle={styles.actionButtonContent}
           >
-            {isListening ? "聞いています..." : "音声で操作"}
+            {isListening ? "聞いています..." : "音声操作"}
+          </Button>
+
+          <Button
+            mode={"contained-tonal"}
+            onPress={showManualTimerDialogVisible}
+            style={[styles.actionButton]}
+            icon={"alarm"}
+            contentStyle={styles.actionButtonContent}
+          >
+            タイマー
           </Button>
 
           {/* 材料表示ボタン（右側） */}
@@ -270,7 +320,7 @@ export default function CookingModeScreen() {
             icon="format-list-bulleted"
             contentStyle={styles.actionButtonContent}
           >
-            {showIngredients ? "手順を表示" : "材料を表示"}
+            {showIngredients ? "手順" : "材料"}
           </Button>
         </View>
       </View>
@@ -337,14 +387,14 @@ const styles = StyleSheet.create({
   buttonsContainer: {
     position: "absolute",
     bottom: 0,
-    left: 16,
-    right: 16,
+    left: 8,
+    right: 8,
     flexDirection: "row",
     justifyContent: "space-between",
+    gap: 8,
   },
   actionButton: {
     flex: 1,
-    marginHorizontal: 8,
     borderRadius: 30,
   },
   actionButtonContent: {

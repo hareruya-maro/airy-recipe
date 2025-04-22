@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
   cookingModeContainer: {
     borderRadius: 8,
     padding: 16,
-    backgroundColor: "#f8f9fa",
+    // backgroundColor: "#f8f9fa",
   },
   stepNumberCooking: {
     fontSize: 20,

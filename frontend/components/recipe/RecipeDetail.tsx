@@ -2,7 +2,7 @@ import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import React, { useEffect } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
-import { Appbar, Button, Chip, Text } from "react-native-paper";
+import { Appbar, Button, Chip, Surface, Text } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Recipe, useRecipeStore } from "../../store/recipeStore";
 import { IngredientsList } from "./IngredientsList";
@@ -53,7 +53,7 @@ export const RecipeDetail: React.FC<RecipeDetailProps> = ({ recipe }) => {
         </View>
 
         {/* レシピ情報 */}
-        <View style={styles.infoContainer}>
+        <Surface style={styles.infoContainer}>
           <View style={styles.infoRow}>
             <View style={styles.infoItem}>
               <Text variant="bodyMedium">準備時間</Text>
@@ -72,7 +72,7 @@ export const RecipeDetail: React.FC<RecipeDetailProps> = ({ recipe }) => {
               <Text variant="titleMedium">{recipe.servings}人分</Text>
             </View>
           </View>
-        </View>
+        </Surface>
 
         {/* 説明文 */}
         <View style={styles.section}>
@@ -101,7 +101,7 @@ export const RecipeDetail: React.FC<RecipeDetailProps> = ({ recipe }) => {
 
         {/* コツとアドバイス */}
         {recipe.tips && recipe.tips.length > 0 && (
-          <View style={styles.tipsSection}>
+          <Surface style={styles.tipsSection}>
             <Text variant="titleLarge" style={styles.sectionTitle}>
               コツとアドバイス
             </Text>
@@ -110,7 +110,7 @@ export const RecipeDetail: React.FC<RecipeDetailProps> = ({ recipe }) => {
                 • {tip}
               </Text>
             ))}
-          </View>
+          </Surface>
         )}
 
         {/* 下部余白（フローティングボタンと重ならないようにする） */}
@@ -165,7 +165,7 @@ const styles = StyleSheet.create({
   },
   infoContainer: {
     padding: 16,
-    backgroundColor: "#f9f9f9",
+    // backgroundColor: "#f9f9f9",
   },
   infoRow: {
     flexDirection: "row",
@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
   },
   tipsSection: {
     padding: 16,
-    backgroundColor: "#f0f8ff",
+    // backgroundColor: "#f0f8ff",
     margin: 16,
     borderRadius: 8,
   },
