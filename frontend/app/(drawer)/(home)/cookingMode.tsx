@@ -2,13 +2,7 @@ import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import {
-  FlatList,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  View,
-} from "react-native";
+import { FlatList, SafeAreaView, StyleSheet, View } from "react-native";
 import {
   Appbar,
   Button,
@@ -33,6 +27,19 @@ import {
   useRecipeStore,
 } from "../../../store/recipeStore";
 
+// セクションデータの型定義
+type SectionType = {
+  id: string;
+  type:
+    | "timer"
+    | "content"
+    | "feedback"
+    | "conversation"
+    | "aiResponse"
+    | "error";
+  data: any;
+};
+
 export default function CookingModeScreen() {
   const {
     currentRecipe,
@@ -51,7 +58,7 @@ export default function CookingModeScreen() {
   // FlowingGradientコンポーネントへの参照
   const flowingGradientRef = useRef<FlowingGradientRef>(null);
 
-  // 会話履歴用のFlatListのリファレンス
+  // FlatListのリファレンス
   const flatListRef = useRef<FlatList>(null);
 
   const { bottom } = useSafeAreaInsets();
@@ -85,7 +92,7 @@ export default function CookingModeScreen() {
     };
   }, []);
 
-  // 会話履歴が更新されたら自動スクロールする
+  // セクションデータが更新されたら自動スクロールする
   useEffect(() => {
     if (conversationHistory.length > 0 && flatListRef.current) {
       flatListRef.current.scrollToEnd({ animated: true });
@@ -166,26 +173,139 @@ export default function CookingModeScreen() {
     }
   };
 
-  // 会話メッセージの描画関数
-  const renderConversationItem = ({ item }: { item: ConversationMessage }) => {
-    // ユーザーメッセージとAIメッセージのスタイルを変える
-    const isUserMessage = item.isUser;
-    return (
-      <Surface
-        style={[
-          styles.messageItem,
-          isUserMessage ? styles.userMessage : styles.aiMessage,
-        ]}
-        elevation={1}
-      >
-        <View style={styles.messageHeader}>
-          <Text style={{ color: "#fff", fontWeight: "bold" }}>
-            {isUserMessage ? "あなた:" : "AIry Recipe:"}
-          </Text>
-        </View>
-        <Text style={styles.messageText}>{item.text}</Text>
-      </Surface>
-    );
+  // 表示するセクションデータを作成
+  const getSectionData = (): SectionType[] => {
+    const sections: SectionType[] = [];
+
+    // タイマーセクション
+    if (currentRecipe) {
+      sections.push({
+        id: "timer",
+        type: "timer",
+        data: currentRecipe.steps[currentStepIndex]?.description || "",
+      });
+    }
+
+    // メインコンテンツ（材料または手順）
+    sections.push({
+      id: "content",
+      type: "content",
+      data: showIngredients
+        ? { type: "ingredients", ingredients: currentRecipe?.ingredients }
+        : { type: "steps", steps: currentRecipe?.steps, currentStepIndex },
+    });
+
+    // 音声認識フィードバック
+    if (recognizedText) {
+      sections.push({
+        id: "feedback",
+        type: "feedback",
+        data: recognizedText,
+      });
+    }
+
+    // 会話履歴
+    if (conversationHistory.length > 0) {
+      sections.push({
+        id: "conversation",
+        type: "conversation",
+        data: conversationHistory,
+      });
+    }
+
+    // AIレスポンス
+    if (lastAIResponse) {
+      sections.push({
+        id: "aiResponse",
+        type: "aiResponse",
+        data: lastAIResponse,
+      });
+    }
+
+    // エラー
+    if (error) {
+      sections.push({
+        id: "error",
+        type: "error",
+        data: error,
+      });
+    }
+
+    return sections;
+  };
+
+  // セクションアイテムの描画関数
+  const renderSectionItem = ({ item }: { item: SectionType }) => {
+    switch (item.type) {
+      case "timer":
+        return <CookingTimer currentStep={item.data} />;
+
+      case "content":
+        return item.data.type === "ingredients" ? (
+          <IngredientsList ingredients={item.data.ingredients} />
+        ) : (
+          <StepsList
+            steps={item.data.steps}
+            currentStepIndex={item.data.currentStepIndex}
+            onNextStep={nextStep}
+            onPreviousStep={previousStep}
+            cookingMode={true}
+          />
+        );
+
+      case "feedback":
+        return (
+          <Surface style={styles.recognitionFeedback} elevation={1}>
+            <Text variant="labelLarge">認識テキスト:</Text>
+            <Text style={styles.recognizedText}>{item.data}</Text>
+          </Surface>
+        );
+
+      case "conversation":
+        return (
+          <View style={styles.conversationContainer}>
+            <Text style={styles.conversationTitle}>会話履歴</Text>
+            {item.data.map((message: ConversationMessage) => (
+              <Surface
+                key={message.id}
+                style={[
+                  styles.messageItem,
+                  message.isUser ? styles.userMessage : styles.aiMessage,
+                ]}
+                elevation={1}
+              >
+                <View style={styles.messageHeader}>
+                  <Text style={{ color: "#fff", fontWeight: "bold" }}>
+                    {message.isUser ? "あなた:" : "AIry Recipe:"}
+                  </Text>
+                </View>
+                <Text style={styles.messageText}>{message.text}</Text>
+              </Surface>
+            ))}
+          </View>
+        );
+
+      case "aiResponse":
+        return (
+          <Surface style={styles.aiResponse} elevation={1}>
+            <View style={styles.aiResponseHeader}>
+              <Text variant="labelLarge">AIry Recipe:</Text>
+              <IconButton
+                icon="close-circle-outline"
+                size={20}
+                onPress={() => setLastAIResponse(null)}
+              />
+            </View>
+            <Text style={styles.aiResponseText}>{item.data}</Text>
+          </Surface>
+        );
+
+      case "error":
+        return <Text style={styles.errorText}>エラー: {item.data}</Text>;
+
+      default:
+        return null;
+    }
   };
 
   if (!currentRecipe) {
@@ -218,65 +338,14 @@ export default function CookingModeScreen() {
           <Appbar.Action icon="close" color="#fff" onPress={handleClose} />
         </Appbar.Header>
 
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content}>
-          {/* タイマーコンポーネント */}
-          <CookingTimer
-            currentStep={currentRecipe.steps[currentStepIndex]?.description}
-          />
-
-          {showIngredients ? (
-            <IngredientsList ingredients={currentRecipe.ingredients} />
-          ) : (
-            <StepsList
-              steps={currentRecipe.steps}
-              currentStepIndex={currentStepIndex}
-              onNextStep={nextStep}
-              onPreviousStep={previousStep}
-              cookingMode={true}
-            />
-          )}
-
-          {/* 音声認識フィードバック */}
-          {recognizedText ? (
-            <Surface style={styles.recognitionFeedback} elevation={1}>
-              <Text variant="labelLarge">認識テキスト:</Text>
-              <Text style={styles.recognizedText}>{recognizedText}</Text>
-            </Surface>
-          ) : null}
-
-          {/* 会話履歴の表示 */}
-          {conversationHistory.length > 0 && (
-            <View style={styles.conversationContainer}>
-              <Text style={styles.conversationTitle}>会話履歴</Text>
-              <FlatList
-                ref={flatListRef}
-                data={conversationHistory}
-                renderItem={renderConversationItem}
-                keyExtractor={(item) => item.id}
-                style={styles.conversationList}
-                nestedScrollEnabled
-              />
-            </View>
-          )}
-
-          {/* AIレスポンス */}
-          {lastAIResponse ? (
-            <Surface style={styles.aiResponse} elevation={1}>
-              <View style={styles.aiResponseHeader}>
-                <Text variant="labelLarge">AIry Recipe:</Text>
-                <IconButton
-                  icon="close-circle-outline"
-                  size={20}
-                  onPress={() => setLastAIResponse(null)}
-                />
-              </View>
-              <Text style={styles.aiResponseText}>{lastAIResponse}</Text>
-            </Surface>
-          ) : null}
-
-          {/* エラーメッセージ */}
-          {error ? <Text style={styles.errorText}>エラー: {error}</Text> : null}
-        </ScrollView>
+        {/* 単一のFlatListでコンテンツを表示 */}
+        <FlatList
+          ref={flatListRef}
+          data={getSectionData()}
+          renderItem={renderSectionItem}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.content}
+        />
 
         {/* 音声読み上げ中のダイアログ表示（パルスアニメーション付き） */}
         <PulsingDialog
