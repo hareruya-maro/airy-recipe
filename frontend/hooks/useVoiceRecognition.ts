@@ -304,11 +304,47 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
     const lowerText = text.toLowerCase();
     console.log("コマンド処理実行:", lowerText);
 
+    // ウェイクワードのチェック
+    const hasWakeWord =
+      lowerText.startsWith("アイリ") ||
+      lowerText.startsWith("あいり") ||
+      lowerText.startsWith("エリ") ||
+      lowerText.startsWith("えり") ||
+      lowerText.startsWith("エアリ") ||
+      lowerText.startsWith("えあり");
+
+    // ウェイクワードがない場合は処理しない
+    if (!hasWakeWord) {
+      console.log("ウェイクワードがないため処理をスキップ:", lowerText);
+      restartVoiceRecognition();
+      return;
+    }
+
+    // ウェイクワードを除去した実際のコマンド部分を抽出
+    const commandText = lowerText
+      .replace(/^(アイリー|えりー|エリー|あいりー)/, "")
+      .trim();
+    console.log("ウェイクワード検出、コマンド処理:", commandText);
+
+    // コマンドが空の場合は標準応答
+    if (!commandText) {
+      const responseMessage = "はい、何をお手伝いしましょうか？";
+      setLastAIResponse(responseMessage);
+
+      // 会話履歴に追加
+      addConversationMessage(text, true); // ユーザーの発話
+      addConversationMessage(responseMessage, false); // システムの応答
+
+      speakResponse(responseMessage);
+      restartVoiceRecognition();
+      return;
+    }
+
     // 基本コマンドを先に処理（即時応答が必要なもの）
     if (
-      lowerText.includes("次") ||
-      lowerText.includes("次へ") ||
-      lowerText.includes("進める")
+      commandText.includes("次") ||
+      commandText.includes("次へ") ||
+      commandText.includes("進める")
     ) {
       nextStep();
       const responseMessage = "次のステップに進みます";
@@ -322,10 +358,10 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
       restartVoiceRecognition();
       return;
     } else if (
-      lowerText.includes("戻る") ||
-      lowerText.includes("前") ||
-      lowerText.includes("前へ") ||
-      lowerText.includes("戻って")
+      commandText.includes("戻る") ||
+      commandText.includes("前") ||
+      commandText.includes("前へ") ||
+      commandText.includes("戻って")
     ) {
       previousStep();
       const responseMessage = "前のステップに戻ります";
@@ -339,9 +375,9 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
       restartVoiceRecognition();
       return;
     } else if (
-      lowerText.includes("材料") ||
-      lowerText.includes("ざいりょう") ||
-      lowerText.includes("ingredient")
+      commandText.includes("材料") ||
+      commandText.includes("ざいりょう") ||
+      commandText.includes("ingredient")
     ) {
       // 材料リストを表示するための状態更新
       const responseMessage = "材料リストを表示します";
@@ -359,10 +395,10 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
       restartVoiceRecognition();
       return;
     } else if (
-      lowerText.includes("手順") ||
-      lowerText.includes("てじゅん") ||
-      lowerText.includes("ステップ") ||
-      lowerText.includes("step")
+      commandText.includes("手順") ||
+      commandText.includes("てじゅん") ||
+      commandText.includes("ステップ") ||
+      commandText.includes("step")
     ) {
       // 手順リストを表示するための状態更新
       const responseMessage = "手順リストを表示します";
