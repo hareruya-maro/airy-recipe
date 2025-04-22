@@ -322,7 +322,7 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
 
     // ウェイクワードを除去した実際のコマンド部分を抽出
     const commandText = lowerText
-      .replace(/^(アイリー|えりー|エリー|あいりー)/, "")
+      .replace(/^(アイリ|えり|エリ|あいり|エアリ|えあり)/, "")
       .trim();
     console.log("ウェイクワード検出、コマンド処理:", commandText);
 
