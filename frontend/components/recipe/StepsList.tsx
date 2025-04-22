@@ -167,15 +167,14 @@ const styles = StyleSheet.create({
   },
   // 料理中モードのスタイル
   cookingModeContainer: {
-    marginVertical: 16,
     borderRadius: 8,
-    padding: 24,
+    padding: 16,
     backgroundColor: "#f8f9fa",
   },
   stepNumberCooking: {
     fontSize: 20,
     fontWeight: "bold",
-    marginBottom: 16,
+    marginBottom: 8,
     textAlign: "center",
   },
   cookingModeImageContainer: {

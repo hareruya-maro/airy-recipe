@@ -7,10 +7,11 @@ import {
 } from "@shopify/react-native-skia";
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import { LinearGradient } from "expo-linear-gradient";
-import { router, useNavigation } from "expo-router";
+import { router } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Dimensions,
+  FlatList,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -20,20 +21,25 @@ import {
   ActivityIndicator,
   Appbar,
   Button,
+  Dialog,
   IconButton,
+  Portal,
   Surface,
   Text,
-  useTheme,
 } from "react-native-paper";
 import {
   useDerivedValue,
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { IngredientsList } from "../../../components/recipe/IngredientsList";
 import { StepsList } from "../../../components/recipe/StepsList";
 import { useVoiceRecognition } from "../../../hooks/useVoiceRecognition";
-import { useRecipeStore } from "../../../store/recipeStore";
+import {
+  ConversationMessage,
+  useRecipeStore,
+} from "../../../store/recipeStore";
 
 const getRandomColor = () => {
   // Generate random RGB color values
@@ -54,19 +60,25 @@ export default function CookingModeScreen() {
     recognizedText,
     lastAIResponse,
     setLastAIResponse,
+    conversationHistory, // 会話履歴
+    isDialogVisible, // ダイアログ表示状態
+    setDialogVisible, // ダイアログ表示状態を設定する関数
   } = useRecipeStore();
 
   const [showIngredients, setShowIngredients] = useState(false);
-  const navigation = useNavigation();
-  const theme = useTheme();
 
   const { width, height } = Dimensions.get("window");
   const leftColor = useSharedValue("#2c3e50");
   const rightColor = useSharedValue("#1a1a2e");
 
+  // 会話履歴用のFlatListのリファレンス
+  const flatListRef = useRef<FlatList>(null);
+
   const colors = useDerivedValue(() => {
     return [leftColor.value, rightColor.value];
   }, []);
+
+  const { bottom } = useSafeAreaInsets();
 
   // 料理モード中はスリープを防止するためのkeep awake機能
   useEffect(() => {
@@ -89,6 +101,13 @@ export default function CookingModeScreen() {
     };
   }, []);
 
+  // 会話履歴が更新されたら自動スクロールする
+  useEffect(() => {
+    if (conversationHistory.length > 0 && flatListRef.current) {
+      flatListRef.current.scrollToEnd({ animated: true });
+    }
+  }, [conversationHistory]);
+
   // 材料リストの表示切替用コールバック
   const handleToggleIngredients = useCallback(
     (show?: boolean) => {
@@ -99,10 +118,15 @@ export default function CookingModeScreen() {
   );
 
   // 音声認識フックにコールバックを渡す
-  const { isListening, error, startVoiceRecognition, stopVoiceRecognition } =
-    useVoiceRecognition({
-      onShowIngredients: (isShow: boolean) => handleToggleIngredients(isShow), // 材料表示
-    });
+  const {
+    isListening,
+    error,
+    isSpeaking,
+    startVoiceRecognition,
+    stopVoiceRecognition,
+  } = useVoiceRecognition({
+    onShowIngredients: (isShow: boolean) => handleToggleIngredients(isShow), // 材料表示
+  });
 
   // モーダルを閉じる処理
   const handleClose = () => {
@@ -128,6 +152,28 @@ export default function CookingModeScreen() {
     }
   };
 
+  // 会話メッセージの描画関数
+  const renderConversationItem = ({ item }: { item: ConversationMessage }) => {
+    // ユーザーメッセージとAIメッセージのスタイルを変える
+    const isUserMessage = item.isUser;
+    return (
+      <Surface
+        style={[
+          styles.messageItem,
+          isUserMessage ? styles.userMessage : styles.aiMessage,
+        ]}
+        elevation={1}
+      >
+        <View style={styles.messageHeader}>
+          <Text style={{ color: "#fff", fontWeight: "bold" }}>
+            {isUserMessage ? "あなた:" : "AIry Recipe:"}
+          </Text>
+        </View>
+        <Text style={styles.messageText}>{item.text}</Text>
+      </Surface>
+    );
+  };
+
   if (!currentRecipe) {
     return (
       <LinearGradient
@@ -145,31 +191,29 @@ export default function CookingModeScreen() {
   }
 
   return (
-    <View style={{ flex: 1 }}>
-      <View style={styles.flowingGradientWrapper}>
-        <Canvas style={{ flex: 1 }}>
-          <Rect x={0} y={0} width={width} height={height}>
-            <SkiaGradient
-              start={vec(0, 0)}
-              end={vec(width, height)}
-              colors={colors}
-            />
-          </Rect>
-        </Canvas>
-      </View>
-      {/* 音声認識中のみ表示される下から上に流れるグラデーションアニメーション */}
-      {/* <FlowingGradient isActive={isListening} /> */}
+    <Portal.Host>
+      <View style={{ flex: 1 }}>
+        <View style={styles.flowingGradientWrapper}>
+          <Canvas style={{ flex: 1 }}>
+            <Rect x={0} y={0} width={width} height={height}>
+              <SkiaGradient
+                start={vec(0, 0)}
+                end={vec(width, height)}
+                colors={colors}
+              />
+            </Rect>
+          </Canvas>
+        </View>
 
-      <Appbar.Header style={styles.transparentHeader}>
-        <Appbar.Content
-          title={currentRecipe.title}
-          titleStyle={styles.headerTitle}
-        />
-        <Appbar.Action icon="close" color="#fff" onPress={handleClose} />
-      </Appbar.Header>
+        <Appbar.Header style={styles.transparentHeader}>
+          <Appbar.Content
+            title={currentRecipe.title}
+            titleStyle={styles.headerTitle}
+          />
+          <Appbar.Action icon="close" color="#fff" onPress={handleClose} />
+        </Appbar.Header>
 
-      <SafeAreaView style={styles.containerTransparent}>
-        <ScrollView style={styles.content}>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content}>
           {showIngredients ? (
             <IngredientsList ingredients={currentRecipe.ingredients} />
           ) : (
@@ -190,6 +234,21 @@ export default function CookingModeScreen() {
             </Surface>
           ) : null}
 
+          {/* 会話履歴の表示 */}
+          {conversationHistory.length > 0 && (
+            <View style={styles.conversationContainer}>
+              <Text style={styles.conversationTitle}>会話履歴</Text>
+              <FlatList
+                ref={flatListRef}
+                data={conversationHistory}
+                renderItem={renderConversationItem}
+                keyExtractor={(item) => item.id}
+                style={styles.conversationList}
+                nestedScrollEnabled
+              />
+            </View>
+          )}
+
           {/* AIレスポンス */}
           {lastAIResponse ? (
             <Surface style={styles.aiResponse} elevation={1}>
@@ -209,8 +268,29 @@ export default function CookingModeScreen() {
           {error ? <Text style={styles.errorText}>エラー: {error}</Text> : null}
         </ScrollView>
 
+        {/* 音声読み上げ中のダイアログ表示 */}
+        <Dialog
+          visible={(isDialogVisible && lastAIResponse !== null) || true}
+          dismissable={false}
+          style={styles.dialogContainer}
+        >
+          <Dialog.Title style={styles.dialogTitle}>AIry Recipe</Dialog.Title>
+          <Dialog.Content>
+            <Text style={styles.dialogText}>{lastAIResponse}</Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            {(isSpeaking || true) && (
+              <ActivityIndicator
+                animating={true}
+                color="#fff"
+                style={[styles.dialogLoader]}
+              />
+            )}
+          </Dialog.Actions>
+        </Dialog>
+
         {/* ボタン配置エリア */}
-        <View style={styles.buttonsContainer}>
+        <View style={[styles.buttonsContainer, { bottom: bottom + 8 }]}>
           {/* 音声操作ボタン（左側） */}
           <Button
             mode={isListening ? "contained" : "contained-tonal"}
@@ -239,8 +319,8 @@ export default function CookingModeScreen() {
             {showIngredients ? "手順を表示" : "材料を表示"}
           </Button>
         </View>
-      </SafeAreaView>
-    </View>
+      </View>
+    </Portal.Host>
   );
 }
 
@@ -267,7 +347,6 @@ const styles = StyleSheet.create({
     marginVertical: 20,
   },
   content: {
-    flex: 1,
     padding: 16,
     paddingBottom: 80, // 下部ボタンの高さ分の余白を追加
   },
@@ -303,7 +382,7 @@ const styles = StyleSheet.create({
   // 下部ボタン配置用のコンテナ
   buttonsContainer: {
     position: "absolute",
-    bottom: 24,
+    bottom: 0,
     left: 16,
     right: 16,
     flexDirection: "row",
@@ -341,5 +420,53 @@ const styles = StyleSheet.create({
   flowingGradient: {
     width: "100%",
     height: "100%",
+  },
+  // 会話履歴用のスタイル
+  conversationContainer: {
+    marginVertical: 12,
+  },
+  conversationTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 8,
+    color: "#fff",
+  },
+  conversationList: {
+    maxHeight: 200, // 会話履歴の最大高さを設定
+  },
+  messageItem: {
+    padding: 12,
+    borderRadius: 8,
+    marginVertical: 4,
+  },
+  userMessage: {
+    backgroundColor: "rgba(0, 123, 255, 0.8)",
+  },
+  aiMessage: {
+    backgroundColor: "rgba(255, 193, 7, 0.8)",
+  },
+  messageHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  messageText: {
+    fontSize: 16,
+    marginTop: 4,
+    color: "#fff",
+  },
+  // ダイアログ用のスタイル
+  dialogContainer: {
+    backgroundColor: "rgba(0, 0, 0, 0.8)",
+  },
+  dialogTitle: {
+    color: "#fff",
+  },
+  dialogText: {
+    color: "#fff",
+    fontSize: 24,
+  },
+  dialogLoader: {
+    marginLeft: 8,
   },
 });

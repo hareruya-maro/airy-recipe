@@ -29,7 +29,11 @@ export default function DetailScreen() {
     );
   }
 
-  return <RecipeDetail recipe={recipe} />;
+  return (
+    <>
+      <RecipeDetail recipe={recipe} />
+    </>
+  );
 }
 
 const styles = StyleSheet.create({

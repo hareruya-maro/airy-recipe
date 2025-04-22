@@ -22,7 +22,9 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
     nextStep,
     previousStep,
     currentRecipe,
-    currentStepIndex, // storeから現在のステップインデックスを取得
+    currentStepIndex,
+    addConversationMessage, // 会話履歴に追加する関数
+    setDialogVisible, // ダイアログ表示状態を設定する関数
   } = useRecipeStore();
 
   const [error, setError] = useState<string>("");
@@ -46,21 +48,43 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
         await Speech.stop();
       }
 
-      // 日本語で読み上げるようにオプションを設定
-      setIsSpeaking(true);
-      await Speech.speak(text, {
-        language: "ja-JP",
-        // 読み上げ完了時のコールバック
-        onDone: () => setIsSpeaking(false),
-        // エラー発生時のコールバック
-        onError: (error) => {
-          console.error("TTSエラー:", error);
-          setIsSpeaking(false);
-        },
-      });
+      // 先にダイアログを表示状態にする
+      console.log("ダイアログを表示します");
+      setDialogVisible(true);
+
+      // 少し待ってから読み上げを開始（UIの更新を確実にするため）
+      setTimeout(async () => {
+        // 日本語で読み上げるようにオプションを設定
+        setIsSpeaking(true);
+        console.log("音声読み上げを開始します");
+        await Speech.speak(text, {
+          language: "ja-JP",
+          // 読み上げ完了時のコールバック
+          onDone: () => {
+            console.log("音声読み上げが完了しました");
+            setIsSpeaking(false);
+            // 読み上げ終了後にダイアログを非表示
+            setDialogVisible(false);
+          },
+          // エラー発生時のコールバック
+          onError: (error) => {
+            console.error("TTSエラー:", error);
+            setIsSpeaking(false);
+            // エラー時もダイアログを非表示
+            setDialogVisible(false);
+          },
+          onStopped: () => {
+            console.log("音声読み上げが停止されました");
+            setIsSpeaking(false);
+            setDialogVisible(false);
+          },
+        });
+      }, 100);
     } catch (e) {
       console.error("TTSエラー:", e);
       setIsSpeaking(false);
+      // エラー時もダイアログを非表示
+      setDialogVisible(false);
     }
   };
 
@@ -201,6 +225,9 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
 
       console.log("processWithLLM", text);
 
+      // 会話履歴にユーザーの発話を追加
+      addConversationMessage(text, true);
+
       // 現在のレシピコンテキストを準備
       const recipeContext = currentRecipe
         ? {
@@ -236,19 +263,34 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
       if (data.success && data.response) {
         console.log("LLM応答:", data.response);
         setLastAIResponse(data.response);
-        speakResponse(data.response); // TTSで応答を読み上げ
+
+        // 会話履歴にLLMの応答を追加
+        addConversationMessage(data.response, false);
+
+        // TTSで応答を読み上げ（この間はダイアログが表示される）
+        speakResponse(data.response);
       } else {
         console.error("LLMエラー:", data.error);
         const errorMessage =
           "申し訳ありません、応答の処理中にエラーが発生しました";
         setLastAIResponse(errorMessage);
-        speakResponse(errorMessage); // TTSでエラーメッセージを読み上げ
+
+        // 会話履歴にエラーメッセージを追加
+        addConversationMessage(errorMessage, false);
+
+        // TTSでエラーメッセージを読み上げ
+        speakResponse(errorMessage);
       }
     } catch (e: any) {
       console.error("LLM処理エラー:", e, e.message, (e as Error).name);
       const errorMessage = "申し訳ありません、処理中にエラーが発生しました";
       setLastAIResponse(errorMessage);
-      speakResponse(errorMessage); // TTSでエラーメッセージを読み上げ
+
+      // 会話履歴にエラーメッセージを追加
+      addConversationMessage(errorMessage, false);
+
+      // TTSでエラーメッセージを読み上げ
+      speakResponse(errorMessage);
     } finally {
       setIsProcessingLLM(false);
     }
@@ -271,6 +313,11 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
       nextStep();
       const responseMessage = "次のステップに進みます";
       setLastAIResponse(responseMessage);
+
+      // 会話履歴に追加
+      addConversationMessage(text, true); // ユーザーの指示
+      addConversationMessage(responseMessage, false); // システムの応答
+
       speakResponse(responseMessage); // TTSで応答を読み上げ
       restartVoiceRecognition();
       return;
@@ -283,6 +330,11 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
       previousStep();
       const responseMessage = "前のステップに戻ります";
       setLastAIResponse(responseMessage);
+
+      // 会話履歴に追加
+      addConversationMessage(text, true); // ユーザーの指示
+      addConversationMessage(responseMessage, false); // システムの応答
+
       speakResponse(responseMessage); // TTSで応答を読み上げ
       restartVoiceRecognition();
       return;
@@ -294,6 +346,11 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
       // 材料リストを表示するための状態更新
       const responseMessage = "材料リストを表示します";
       setLastAIResponse(responseMessage);
+
+      // 会話履歴に追加
+      addConversationMessage(text, true); // ユーザーの指示
+      addConversationMessage(responseMessage, false); // システムの応答
+
       speakResponse(responseMessage); // TTSで応答を読み上げ
       // コールバック関数が提供されている場合は実行
       if (callbacks?.onShowIngredients) {
@@ -310,6 +367,11 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
       // 手順リストを表示するための状態更新
       const responseMessage = "手順リストを表示します";
       setLastAIResponse(responseMessage);
+
+      // 会話履歴に追加
+      addConversationMessage(text, true); // ユーザーの指示
+      addConversationMessage(responseMessage, false); // システムの応答
+
       speakResponse(responseMessage); // TTSで応答を読み上げ
       // 材料表示を無効にする（コールバックが提供されている場合）
       if (callbacks?.onShowIngredients) {
@@ -330,6 +392,7 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
     isListening: isVoiceListening,
     isProcessingLLM,
     error,
+    isSpeaking, // 音声読み上げ中かどうかの状態を追加
     startVoiceRecognition,
     stopVoiceRecognition,
     restartVoiceRecognition,

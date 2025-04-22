@@ -27,6 +27,14 @@ export type Recipe = {
   tags: string[];
 };
 
+// 会話履歴のメッセージ型
+export type ConversationMessage = {
+  id: string;
+  text: string;
+  isUser: boolean;
+  timestamp: Date;
+};
+
 type RecipeState = {
   recipes: Recipe[];
   currentRecipe: Recipe | null;
@@ -35,6 +43,8 @@ type RecipeState = {
   isVoiceListening: boolean;
   recognizedText: string;
   lastAIResponse: string | null;
+  conversationHistory: ConversationMessage[]; // 会話履歴
+  isDialogVisible: boolean; // ダイアログ表示状態
 
   // アクション
   setCurrentRecipe: (recipe: Recipe) => void;
@@ -44,6 +54,8 @@ type RecipeState = {
   setVoiceListening: (isListening: boolean) => void;
   setRecognizedText: (text: string) => void;
   setLastAIResponse: (response: string | null) => void;
+  addConversationMessage: (text: string, isUser: boolean) => void; // 会話履歴にメッセージを追加
+  setDialogVisible: (visible: boolean) => void; // ダイアログ表示状態を設定
   resetCookingSession: () => void;
 };
 
@@ -55,6 +67,8 @@ export const useRecipeStore = create<RecipeState>((set) => ({
   isVoiceListening: false,
   recognizedText: "",
   lastAIResponse: null,
+  conversationHistory: [], // 会話履歴の初期値
+  isDialogVisible: false, // ダイアログ表示状態の初期値
 
   // レシピ関連アクション
   setCurrentRecipe: (recipe) =>
@@ -95,11 +109,30 @@ export const useRecipeStore = create<RecipeState>((set) => ({
   setRecognizedText: (text) => set({ recognizedText: text }),
   setLastAIResponse: (response) => set({ lastAIResponse: response }),
 
+  // 会話履歴関連アクション
+  addConversationMessage: (text, isUser) =>
+    set((state) => ({
+      conversationHistory: [
+        ...state.conversationHistory,
+        {
+          id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+          text,
+          isUser,
+          timestamp: new Date(),
+        },
+      ],
+    })),
+
+  // ダイアログ表示状態の設定
+  setDialogVisible: (visible) => set({ isDialogVisible: visible }),
+
   // セッションリセット
   resetCookingSession: () =>
     set({
       currentStepIndex: 0,
       recognizedText: "",
       lastAIResponse: null,
+      conversationHistory: [], // 会話履歴もリセット
+      isDialogVisible: false, // ダイアログ表示状態もリセット
     }),
 }));
