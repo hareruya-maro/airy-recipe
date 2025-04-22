@@ -9,11 +9,11 @@
 
 import { gemini20Flash, googleAI } from "@genkit-ai/googleai";
 import { Content, VertexAI } from "@google-cloud/vertexai";
+import * as vision from "@google-cloud/vision";
 import cors from "cors";
 import * as logger from "firebase-functions/logger";
 import { onCall, onRequest } from "firebase-functions/v2/https";
 import { genkit } from "genkit";
-import * as vision from "@google-cloud/vision";
 
 // configure a Genkit instance
 const ai = genkit({
@@ -254,32 +254,50 @@ export const processRecipeImage = onRequest((request, response) => {
       try {
         // 1. 画像オブジェクト検出（料理や調理器具の検出）
         const [objectDetectionResult] = await visionClient.objectLocalization!({
-          image: { source: { imageUri: imageUrl } }
+          image: { source: { imageUri: imageUrl } },
         });
-        
+
         const objects = objectDetectionResult.localizedObjectAnnotations || [];
-        
+
         // 料理や調理関連のオブジェクトをフィルタリング
-        const foodRelatedLabels = ['Food', 'Dish', 'Cookware', 'Tableware', 'Meal', 'Dessert', 'Fruit', 'Vegetable'];
-        const foodObjects = objects.filter(obj => 
-          foodRelatedLabels.some(label => obj.name?.toLowerCase().includes(label.toLowerCase()))
+        const foodRelatedLabels = [
+          "Food",
+          "Dish",
+          "Cookware",
+          "Tableware",
+          "Meal",
+          "Dessert",
+          "Fruit",
+          "Vegetable",
+        ];
+        const foodObjects = objects.filter((obj) =>
+          foodRelatedLabels.some((label) =>
+            obj.name?.toLowerCase().includes(label.toLowerCase())
+          )
         );
 
         // 2. OCR処理でテキスト抽出
-        const [textDetectionResult] = await visionClient.documentTextDetection!({
-          image: { source: { imageUri: imageUrl } }
-        });
-        
-        const fullText = textDetectionResult.fullTextAnnotation?.text || '';
+        const [textDetectionResult] = await visionClient.documentTextDetection!(
+          {
+            image: { source: { imageUri: imageUrl } },
+          }
+        );
+
+        const fullText = textDetectionResult.fullTextAnnotation?.text || "";
 
         if (!fullText) {
-          response.status(400).send({ error: "画像からテキストを抽出できませんでした" });
+          response
+            .status(400)
+            .send({ error: "画像からテキストを抽出できませんでした" });
           return;
         }
 
         // 3. Gemini APIを使ったレシピテキストの解析
-        const prompt = RECIPE_EXTRACTION_PROMPT.replace('{{OCR_TEXT}}', fullText);
-        
+        const prompt = RECIPE_EXTRACTION_PROMPT.replace(
+          "{{OCR_TEXT}}",
+          fullText
+        );
+
         // Vertex AIを使用してレシピ情報を抽出
         const messages: Content[] = [
           { role: "user", parts: [{ text: prompt }] },
@@ -293,32 +311,37 @@ export const processRecipeImage = onRequest((request, response) => {
           },
         });
 
-        const responseText = generationResult.response.candidates?.[0].content.parts[0].text || '';
-        
+        const responseText =
+          generationResult.response.candidates?.[0].content.parts[0].text || "";
+
         // JSONレスポンスをパース
         let recipeInfo;
         try {
           // Geminiからの応答をJSON形式に変換
           // JSONブロックを抽出する正規表現
-          const jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```|({[\s\S]*})/);
-          const jsonString = jsonMatch ? jsonMatch[1] || jsonMatch[0] : responseText;
-          
-          recipeInfo = JSON.parse(jsonString.replace(/```/g, '').trim());
+          const jsonMatch = responseText.match(
+            /```json\s*([\s\S]*?)\s*```|({[\s\S]*})/
+          );
+          const jsonString = jsonMatch
+            ? jsonMatch[1] || jsonMatch[0]
+            : responseText;
+
+          recipeInfo = JSON.parse(jsonString.replace(/```/g, "").trim());
         } catch (error) {
           logger.error("JSONパースエラー", error);
           recipeInfo = {
             title: "不明なレシピ",
             ingredients: [],
             steps: [],
-            rawResponse: responseText
+            rawResponse: responseText,
           };
         }
 
         // 4. 検出された料理/調理写真の情報を構造化
-        const foodImages = foodObjects.map(obj => ({
+        const foodImages = foodObjects.map((obj) => ({
           name: obj.name,
           confidence: obj.score,
-          boundingBox: obj.boundingPoly?.normalizedVertices
+          boundingBox: obj.boundingPoly?.normalizedVertices,
         }));
 
         // 5. 最終的な結果を構築
@@ -326,7 +349,7 @@ export const processRecipeImage = onRequest((request, response) => {
           recipeInfo,
           foodImages,
           rawText: fullText,
-          imageUrl
+          imageUrl,
         };
 
         logger.info("レシピ画像処理完了");
@@ -334,14 +357,17 @@ export const processRecipeImage = onRequest((request, response) => {
         // 応答を返す
         response.status(200).send({
           success: true,
-          data: finalResult
+          data: finalResult,
         });
       } catch (error) {
         // エラー処理
         logger.error("レシピ画像処理エラー", error);
         response.status(500).send({
           success: false,
-          error: error instanceof Error ? error.message : "不明なエラーが発生しました"
+          error:
+            error instanceof Error
+              ? error.message
+              : "不明なエラーが発生しました",
         });
       }
     } catch (error) {
@@ -349,7 +375,8 @@ export const processRecipeImage = onRequest((request, response) => {
       logger.error("レシピ画像処理エラー", error);
       response.status(500).send({
         success: false,
-        error: error instanceof Error ? error.message : "不明なエラーが発生しました"
+        error:
+          error instanceof Error ? error.message : "不明なエラーが発生しました",
       });
     }
   });
