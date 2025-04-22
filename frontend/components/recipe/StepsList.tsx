@@ -1,5 +1,6 @@
+import { Image } from "expo-image";
 import React, { useState } from "react";
-import { Image, StyleSheet, TouchableOpacity, View } from "react-native";
+import { StyleSheet, TouchableOpacity, View } from "react-native";
 import { Button, Card, Surface, Text } from "react-native-paper";
 import { Step } from "../../store/recipeStore";
 import { ImageViewerModal } from "./ImageViewerModal";

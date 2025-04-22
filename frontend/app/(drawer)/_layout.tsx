@@ -27,6 +27,7 @@ export default function DrawerLayout() {
           drawerIcon: ({ color }) => (
             <IconSymbol size={24} name="house.fill" color={color} />
           ),
+          swipeEnabled: false,
         }}
       />
       <Drawer.Screen

@@ -28,6 +28,7 @@ export type FlowingGradientRef = {
  */
 const FlowingGradient = forwardRef<FlowingGradientRef, FlowingGradientProps>(
   ({ initialLeftColor = "#2c3e50", initialRightColor = "#1a1a2e" }, ref) => {
+    console.log("FlowingGradient", initialLeftColor, initialRightColor);
     const { width, height } = Dimensions.get("window");
     const leftColor = useSharedValue(initialLeftColor);
     const rightColor = useSharedValue(initialRightColor);

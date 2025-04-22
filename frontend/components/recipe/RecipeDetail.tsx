@@ -1,6 +1,7 @@
+import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import React, { useEffect } from "react";
-import { Image, ScrollView, StyleSheet, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 import { Appbar, Button, Chip, Text } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Recipe, useRecipeStore } from "../../store/recipeStore";

@@ -1,6 +1,6 @@
 import { useNavigation, useRouter } from "expo-router";
 import { FlatList, StyleSheet, TouchableOpacity, View } from "react-native";
-import { Appbar, Card, Surface, Text } from "react-native-paper";
+import { Appbar, Card, Text } from "react-native-paper";
 import { Recipe, useRecipeStore } from "../../../store/recipeStore";
 
 export default function HomeScreen() {
@@ -54,15 +54,13 @@ export default function HomeScreen() {
         <Appbar.Content title="AIry Recipe" />
         <Appbar.Action icon="cog" onPress={() => {}} />
       </Appbar.Header>
-      <Surface style={styles.container}>
-        <FlatList
-          data={recipes}
-          renderItem={renderRecipeCard}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.recipeList}
-          style={{ height: "100%" }} // 追加: FlatListの高さを100%に設定
-        />
-      </Surface>
+      <FlatList
+        data={recipes}
+        renderItem={renderRecipeCard}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.recipeList}
+        style={{ flex: 1 }}
+      />
     </>
   );
 }

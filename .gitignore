@@ -70,3 +70,7 @@ node_modules/
 
 *.tar.gz
 *.app
+*.apk
+*.ipa
+*.aab
+.DS_Store
