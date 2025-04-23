@@ -9,12 +9,17 @@ import {
 } from "firebase/auth";
 import {
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
   getFirestore,
   query,
+  serverTimestamp,
+  setDoc,
+  updateDoc,
   where,
+  writeBatch,
 } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { getStorage } from "firebase/storage";
@@ -83,6 +88,7 @@ export {
   callFunction,
   collection,
   db,
+  deleteDoc,
   doc,
   functions,
   getDoc,
@@ -90,8 +96,12 @@ export {
   httpsCallable,
   onAuthStateChanged,
   query,
+  serverTimestamp,
+  setDoc,
   signInAnonymousUser,
   signOutUser,
   storage,
+  updateDoc,
   where,
+  writeBatch,
 };

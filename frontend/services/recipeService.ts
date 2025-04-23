@@ -6,7 +6,9 @@ import {
   getDoc,
   getDocs,
   query,
+  serverTimestamp,
   where,
+  writeBatch,
 } from "../config/firebase";
 
 // Firestoreのレシピドキュメントの型定義
@@ -42,6 +44,30 @@ export interface Step {
   instruction: string;
   imageUrl?: string;
   tip?: string;
+}
+
+// レシピ更新用のインターフェース（部分更新のため、すべてのフィールドがオプショナル）
+export interface RecipeUpdate {
+  title?: string;
+  description?: string;
+  prepTime?: string | number;
+  cookTime?: string | number;
+  servings?: number;
+  difficulty?: string;
+  image?: string;
+  tags?: string[];
+  isPublic?: boolean;
+  ingredients?: {
+    name: string;
+    quantity: number;
+    unit: string;
+    note?: string;
+  }[];
+  steps?: {
+    instruction: string;
+    imageUrl?: string;
+    tip?: string;
+  }[];
 }
 
 // レシピデータを取得するサービス
@@ -185,6 +211,119 @@ export const recipeService = {
       };
     } catch (error: any) {
       console.error("レシピ詳細取得エラー:", error);
+      throw error;
+    }
+  },
+
+  // レシピを更新する
+  updateRecipe: async (
+    recipeId: string,
+    updates: RecipeUpdate
+  ): Promise<boolean> => {
+    try {
+      // 既存のレシピを取得して、ユーザーが更新できるレシピかチェック
+      const recipeRef = doc(db, "recipes", recipeId);
+      const recipeSnap = await getDoc(recipeRef);
+
+      if (!recipeSnap.exists()) {
+        throw new Error("レシピが見つかりません");
+      }
+
+      const recipe = recipeSnap.data() as Recipe;
+
+      // システムレシピは更新できない
+      if (recipe.isSystemRecipe) {
+        throw new Error("システムレシピは編集できません");
+      }
+
+      // バッチ処理を使用して、レシピ本体と材料・手順を一度に更新
+      const batch = writeBatch(db);
+
+      // メインレシピドキュメントの更新
+      const recipeUpdates: any = {
+        updatedAt: serverTimestamp(),
+      };
+
+      // オプショナルフィールドの追加
+      if (updates.title !== undefined) recipeUpdates.title = updates.title;
+      if (updates.description !== undefined)
+        recipeUpdates.description = updates.description;
+      if (updates.prepTime !== undefined)
+        recipeUpdates.prepTime = updates.prepTime;
+      if (updates.cookTime !== undefined)
+        recipeUpdates.cookTime = updates.cookTime;
+      if (updates.servings !== undefined)
+        recipeUpdates.servings = updates.servings;
+      if (updates.difficulty !== undefined)
+        recipeUpdates.difficulty = updates.difficulty;
+      if (updates.image !== undefined) recipeUpdates.image = updates.image;
+      if (updates.tags !== undefined) recipeUpdates.tags = updates.tags;
+      if (updates.isPublic !== undefined)
+        recipeUpdates.isPublic = updates.isPublic;
+
+      // メインレシピの更新をバッチに追加
+      batch.update(recipeRef, recipeUpdates);
+
+      // 材料の更新
+      if (updates.ingredients !== undefined) {
+        // 既存の材料を削除するためにサブコレクションを取得
+        const ingredientsRef = collection(
+          db,
+          "recipes",
+          recipeId,
+          "ingredients"
+        );
+        const ingredientsSnap = await getDocs(ingredientsRef);
+
+        // 既存の材料をすべて削除
+        ingredientsSnap.docs.forEach((doc) => {
+          batch.delete(doc.ref);
+        });
+
+        // 新しい材料を追加
+        updates.ingredients.forEach((ingredient, index) => {
+          const newIngredientRef = doc(
+            collection(db, "recipes", recipeId, "ingredients")
+          );
+          batch.set(newIngredientRef, {
+            name: ingredient.name,
+            quantity: ingredient.quantity,
+            unit: ingredient.unit,
+            note: ingredient.note || "",
+            order: index,
+          });
+        });
+      }
+
+      // 手順の更新
+      if (updates.steps !== undefined) {
+        // 既存の手順を削除するためにサブコレクションを取得
+        const stepsRef = collection(db, "recipes", recipeId, "steps");
+        const stepsSnap = await getDocs(stepsRef);
+
+        // 既存の手順をすべて削除
+        stepsSnap.docs.forEach((doc) => {
+          batch.delete(doc.ref);
+        });
+
+        // 新しい手順を追加
+        updates.steps.forEach((step, index) => {
+          const newStepRef = doc(collection(db, "recipes", recipeId, "steps"));
+          batch.set(newStepRef, {
+            instruction: step.instruction,
+            imageUrl: step.imageUrl || null,
+            tip: step.tip || null,
+            order: index,
+          });
+        });
+      }
+
+      // バッチ処理の実行
+      await batch.commit();
+
+      return true;
+    } catch (error: any) {
+      console.error("レシピ更新エラー:", error);
       throw error;
     }
   },

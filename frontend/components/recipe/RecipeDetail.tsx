@@ -1,9 +1,10 @@
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 import { Appbar, Button, Chip, Surface, Text } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { auth } from "../../config/firebase";
 import { Recipe, useRecipeStore } from "../../store/recipeStore";
 import { IngredientsList } from "./IngredientsList";
 import { StepsList } from "./StepsList";
@@ -17,15 +18,29 @@ export const RecipeDetail: React.FC<RecipeDetailProps> = ({ recipe }) => {
     useRecipeStore();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const [isEditable, setIsEditable] = useState(false);
 
-  // レシピを現在のレシピとして設定
+  // レシピを現在のレシピとして設定し、編集権限をチェック
   useEffect(() => {
     setCurrentRecipe(recipe);
-  }, [recipe]);
+
+    // 編集権限の確認（自分で作成したレシピのみ編集可能）
+    const currentUserId = auth.currentUser?.uid;
+    setIsEditable(
+      !!currentUserId &&
+        recipe.createdBy === currentUserId &&
+        recipe.isSystemRecipe !== true
+    );
+  }, [recipe.id]); // recipe.idのみを依存配列に追加し、不要な再レンダリングを防ぐ
 
   // 料理中モードを開始（Expo Routerでのモーダル表示に変更）
   const startCookingMode = () => {
     router.push("/(drawer)/(home)/cookingMode");
+  };
+
+  // 編集画面へ遷移
+  const editRecipe = () => {
+    router.push(`/(drawer)/(home)/editRecipe?id=${recipe.id}`);
   };
 
   // 通常のレシピ詳細表示
@@ -34,7 +49,7 @@ export const RecipeDetail: React.FC<RecipeDetailProps> = ({ recipe }) => {
       <Appbar.Header>
         <Appbar.Action icon="chevron-left" onPress={router.back} />
         <Appbar.Content title="AIry Recipe" />
-        <Appbar.Action icon="cog" onPress={() => {}} />
+        {isEditable && <Appbar.Action icon="pencil" onPress={editRecipe} />}
       </Appbar.Header>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>

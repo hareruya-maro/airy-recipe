@@ -36,11 +36,8 @@ export default function DetailScreen() {
     const loadDetails = async () => {
       setIsLoading(true);
       try {
-        await fetchRecipeDetails(id as string);
-        // fetchRecipeDetailsはストアを更新するので、
-        // 最新のレシピを再取得する
-        const updatedRecipe = recipes.find((r) => r.id === id);
-        setRecipe(updatedRecipe || null);
+        const fetchedRecipe = await fetchRecipeDetails(id as string);
+        setRecipe(fetchedRecipe);
         setError(null);
       } catch (err) {
         console.error("レシピ詳細の取得に失敗:", err);
@@ -52,7 +49,7 @@ export default function DetailScreen() {
     };
 
     loadDetails();
-  }, [id, fetchRecipeDetails, recipes]);
+  }, [id, fetchRecipeDetails]); // recipesを依存配列から削除
 
   // 読み込み中の表示
   if (isLoading) {

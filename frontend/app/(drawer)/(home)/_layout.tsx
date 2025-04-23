@@ -20,6 +20,13 @@ export default function HomeLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="editRecipe"
+        options={{
+          title: "レシピ編集",
+          headerShown: false,
+        }}
+      />
       {/* CookingModeをモーダル表示として設定 */}
       <Stack.Screen
         name="cookingMode"

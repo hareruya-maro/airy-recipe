@@ -5,6 +5,7 @@ import {
   Recipe as FirestoreRecipe,
   Step as FirestoreStep,
   recipeService,
+  RecipeUpdate,
 } from "../services/recipeService";
 
 // 会話履歴のメッセージ型
@@ -58,6 +59,7 @@ type RecipeState = {
 
   // レシピ関連アクション
   setCurrentRecipe: (recipe: Recipe) => void;
+  updateRecipe: (recipeId: string, updates: RecipeUpdate) => Promise<boolean>;
 
   // ステップナビゲーション
   nextStep: () => void;
@@ -214,6 +216,25 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
       currentRecipe: recipe,
       currentStepIndex: 0,
     }),
+
+  updateRecipe: async (recipeId, updates) => {
+    try {
+      await recipeService.updateRecipe(recipeId, updates);
+      set((state) => ({
+        recipes: state.recipes.map((recipe) =>
+          recipe.id === recipeId ? { ...recipe, ...updates } : recipe
+        ),
+        currentRecipe:
+          state.currentRecipe?.id === recipeId
+            ? { ...state.currentRecipe, ...updates }
+            : state.currentRecipe,
+      }));
+      return true;
+    } catch (error) {
+      console.error("レシピ更新エラー:", error);
+      return false;
+    }
+  },
 
   // ステップナビゲーション
   nextStep: () =>
