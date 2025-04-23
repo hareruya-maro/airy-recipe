@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { FlatList, Image, StyleSheet, View } from "react-native";
 import {
+  ActivityIndicator,
   Button,
   Card,
   FAB,
@@ -8,30 +9,49 @@ import {
   Menu,
   Portal,
   ProgressBar,
+  Snackbar,
   Text,
+  useTheme,
 } from "react-native-paper";
-import { UploadImage, useImageUpload } from "../../hooks/useImageUpload";
+import {
+  RecipeProcessingResult,
+  UploadImage,
+  useImageUpload,
+} from "../../hooks/useImageUpload";
 
 type RecipeImageUploaderProps = {
   onUploadComplete?: (result: { folder: string; urls: string[] }) => void;
+  onRecipeProcessed?: (recipeResult: RecipeProcessingResult) => void;
 };
 
 export const RecipeImageUploader = ({
   onUploadComplete,
+  onRecipeProcessed,
 }: RecipeImageUploaderProps) => {
   const [menuVisible, setMenuVisible] = useState(false);
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [processingMode, setProcessingMode] = useState<"upload" | "process">(
+    "upload"
+  );
+  const { colors } = useTheme();
 
   const {
     images,
     isUploading,
+    isProcessing,
+    recipeResult,
     error,
     takePicture,
     pickImage,
     cropImage,
     uploadImagesToFirebase,
+    uploadAndProcessRecipeImage,
     clearImages,
     removeImage,
   } = useImageUpload();
+
+  const prevRecipeResultRef = useRef<RecipeProcessingResult | null>(null);
 
   // メニューを開く・閉じる
   const openMenu = () => setMenuVisible(true);
@@ -54,7 +74,7 @@ export const RecipeImageUploader = ({
     cropImage(imageUri);
   };
 
-  // Firebase Storageにアップロードする
+  // Firebase Storageにアップロードする（通常のアップロード）
   const handleUpload = async () => {
     if (images.length > 0) {
       // フォルダ名を生成（例：recipe_年月日_時分秒）
@@ -67,9 +87,54 @@ export const RecipeImageUploader = ({
         now.getSeconds()
       ).padStart(2, "0")}`;
 
+      setProcessingMode("upload");
+
       const result = await uploadImagesToFirebase(folderName);
       if (result && onUploadComplete) {
         onUploadComplete(result);
+        setSnackbarMessage("画像のアップロードが完了しました");
+        setSnackbarVisible(true);
+      }
+    }
+  };
+
+  // Firebase Storageにアップロードしてからレシピ処理もする
+  const handleUploadAndProcess = async () => {
+    if (images.length > 0) {
+      // フォルダ名を生成（例：recipe_年月日_時分秒）
+      const now = new Date();
+      const folderName = `recipe_images/${now.getFullYear()}${String(
+        now.getMonth() + 1
+      ).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}_${String(
+        now.getHours()
+      ).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}${String(
+        now.getSeconds()
+      ).padStart(2, "0")}`;
+
+      setProcessingMode("process");
+
+      // アップロードとレシピ処理を実行
+      const result = await uploadAndProcessRecipeImage(folderName);
+
+      // 通常のアップロードコールバックも呼び出す（互換性のため）
+      if (onUploadComplete && images[0].downloadUrl) {
+        onUploadComplete({
+          folder: folderName,
+          urls: images
+            .filter((img) => img.downloadUrl)
+            .map((img) => img.downloadUrl!),
+        });
+      }
+
+      // レシピ処理結果をコールバックで通知
+      if (result && onRecipeProcessed) {
+        onRecipeProcessed(result);
+        prevRecipeResultRef.current = result;
+        setSnackbarMessage("レシピの解析が完了しました");
+        setSnackbarVisible(true);
+      } else if (!result && error) {
+        setSnackbarMessage(`エラーが発生しました: ${error}`);
+        setSnackbarVisible(true);
       }
     }
   };
@@ -115,7 +180,7 @@ export const RecipeImageUploader = ({
   );
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* エラーメッセージ */}
       {error && <Text style={styles.errorText}>{error}</Text>}
 
@@ -140,15 +205,65 @@ export const RecipeImageUploader = ({
             contentContainerStyle={styles.imagesList}
           />
 
-          <Button
-            mode="contained"
-            onPress={handleUpload}
-            disabled={isUploading || images.length === 0}
-            loading={isUploading}
-            style={styles.uploadButton}
-          >
-            {isUploading ? "アップロード中..." : "Firebaseにアップロード"}
-          </Button>
+          <View style={styles.buttonContainer}>
+            {/* 通常アップロードボタン */}
+            <Button
+              mode="outlined"
+              onPress={handleUpload}
+              disabled={isUploading || isProcessing || images.length === 0}
+              loading={isUploading && processingMode === "upload"}
+              style={[styles.uploadButton, styles.outlineButton]}
+            >
+              画像をアップロードのみ
+            </Button>
+
+            {/* レシピ処理ボタン */}
+            <Button
+              mode="contained"
+              onPress={handleUploadAndProcess}
+              disabled={isUploading || isProcessing || images.length === 0}
+              loading={
+                isProcessing || (isUploading && processingMode === "process")
+              }
+              style={styles.uploadButton}
+            >
+              {isProcessing
+                ? "レシピを解析中..."
+                : isUploading && processingMode === "process"
+                ? "アップロード中..."
+                : "アップロード＆レシピ解析"}
+            </Button>
+          </View>
+
+          {/* レシピ処理中の表示 */}
+          {isProcessing && (
+            <View style={styles.processingContainer}>
+              <ActivityIndicator size="large" color="#2196F3" />
+              <Text style={styles.processingText}>
+                レシピを解析しています...
+                この処理には数十秒かかることがあります。
+              </Text>
+            </View>
+          )}
+
+          {/* レシピ処理結果のプレビュー */}
+          {recipeResult && !isProcessing && (
+            <View style={styles.resultContainer}>
+              <Text style={styles.resultTitle}>レシピ解析結果:</Text>
+              <Text style={styles.resultText}>
+                タイトル: {recipeResult.recipeData.title}
+              </Text>
+              {recipeResult.recipeData.description && (
+                <Text style={styles.resultText} numberOfLines={2}>
+                  説明: {recipeResult.recipeData.description}
+                </Text>
+              )}
+              <Text style={styles.resultText}>
+                調理時間: {recipeResult.recipeData.cookTime}分 / 難易度:{" "}
+                {recipeResult.recipeData.difficulty}
+              </Text>
+            </View>
+          )}
         </View>
       )}
 
@@ -173,6 +288,17 @@ export const RecipeImageUploader = ({
           </Menu>
         </View>
       </Portal>
+
+      {/* スナックバー通知 */}
+      <Portal>
+        <Snackbar
+          visible={snackbarVisible}
+          onDismiss={() => setSnackbarVisible(false)}
+          duration={3000}
+        >
+          {snackbarMessage}
+        </Snackbar>
+      </Portal>
     </View>
   );
 };
@@ -191,7 +317,7 @@ const styles = StyleSheet.create({
     bottom: 16,
   },
   fab: {
-    backgroundColor: "#2196F3",
+    // backgroundColor: "#2196F3",
   },
   imagesContainer: {
     marginVertical: 16,
@@ -242,7 +368,38 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     borderRadius: 20,
   },
-  uploadButton: {
+  buttonContainer: {
     margin: 16,
+  },
+  uploadButton: {
+    marginBottom: 8,
+  },
+  outlineButton: {
+    marginBottom: 16,
+  },
+  processingContainer: {
+    padding: 16,
+    alignItems: "center",
+    // backgroundColor: "#f0f8ff",
+    marginHorizontal: 16,
+    borderRadius: 8,
+  },
+  processingText: {
+    marginTop: 16,
+    textAlign: "center",
+  },
+  resultContainer: {
+    padding: 16,
+    // backgroundColor: "#e8f5e9",
+    marginHorizontal: 16,
+    borderRadius: 8,
+  },
+  resultTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 8,
+  },
+  resultText: {
+    marginBottom: 4,
   },
 });

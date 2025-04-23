@@ -118,7 +118,242 @@ MVP の反応を見ながら、以下の機能を追加していくことを検�
 - **アクセシビリティ:** 色覚特性や視覚障がいを持つユーザーへの配慮。
 - **多言語対応**
 
-## 5. 開発上の考慮事項
+## 5. データモデル設計
+
+### 5.1. レシピデータモデル
+
+以下は Firestore に保存するレシピのデータ構造です：
+
+- **Recipe（レシピ）**
+
+  - `id`: string - レシピの一意識別子
+  - `title`: string - レシピのタイトル
+  - `description`: string - レシピの簡単な説明
+  - `imageUrl`: string - レシピのメイン画像 URL
+  - `servings`: number - 何人前か
+  - `prepTime`: number - 準備時間（分）
+  - `cookTime`: number - 調理時間（分）
+  - `totalTime`: number - 合計時間（分）
+  - `difficulty`: string - 難易度（"beginner", "intermediate", "advanced"）
+  - `cuisine`: string - 料理のジャンル（和食、洋食など）
+  - `tags`: array<string> - 検索用のタグ（「朝食」「パーティー」「ベジタリアン」など）
+  - `createdAt`: timestamp - 作成日時
+  - `updatedAt`: timestamp - 更新日時
+  - `createdBy`: string - 作成者の UID（ユーザー投稿の場合）または "system"（システム共通レシピの場合）
+  - `isPublic`: boolean - 公開状態
+  - `isSystemRecipe`: boolean - システム共通レシピかどうかのフラグ
+
+- **Ingredient（材料）**
+
+  - `name`: string - 材料名
+  - `quantity`: number - 数量
+  - `unit`: string - 単位（g、ml、個など）
+  - `note`: string? - 追加情報（任意）
+
+- **Step（手順）**
+
+  - `order`: number - 手順の順番
+  - `instruction`: string - 手順の説明
+  - `imageUrl`: string? - 手順の画像 URL（任意）
+  - `tip`: string? - その手順に関するヒント（任意）
+
+- **ユーザー関連データ**
+  - `favorites`: array<string> - お気に入りレシピの ID
+  - `skillLevel`: string - 料理スキルレベル（初心者、中級者、上級者）
+  - `preferences`: object - 好み設定（アレルギー情報など）
+
+### 5.2. Firestore コレクション設計
+
+Firestore では以下のようなコレクション・ドキュメント構造を想定します：
+
+```
+firestore/
+  recipes/                     # 全レシピのコレクション（共通レシピとユーザー個別レシピ両方を含む）
+    {recipeId}/                # 個別のレシピドキュメント
+      ingredients/             # そのレシピの材料サブコレクション
+        {ingredientId}/        # 個別の材料ドキュメント
+      steps/                   # そのレシピの手順サブコレクション
+        {stepId}/              # 個別の手順ドキュメント
+
+  users/                       # ユーザーのコレクション
+    {userId}/                  # 個別のユーザードキュメント
+      favorites/               # お気に入りレシピのサブコレクション
+        {favoriteId}/          # お気に入りレシピの参照
+```
+
+### 5.3. ユーザー共通レシピとユーザー個別レシピの管理
+
+アプリでは「システム共通レシピ」と「ユーザー個別レシピ」の 2 種類のレシピを扱いますが、単一の `recipes` コレクションで管理します：
+
+1. **システム共通レシピ**
+
+   - `recipes` コレクションに格納され、`isSystemRecipe = true` のフラグを持つ
+   - `createdBy = "system"` を持つ
+   - アプリ運営側が提供する基本レシピ
+   - ユーザーは編集できず、お気に入り登録またはコピーのみ可能
+
+2. **ユーザー個別レシピ**
+
+   - ユーザーが個別に作成または追加したレシピ
+   - `recipes` コレクションに格納され、`createdBy` フィールドに作成者のユーザー ID を持つ
+   - `isSystemRecipe = false` のフラグを持つ
+   - 作成者のみが編集可能
+   - 必要に応じて公開設定（`isPublic`）を変更可能
+
+3. **レシピの管理方法**
+   - ユーザーがアプリを利用する際は、`recipes` コレクションからの条件付きクエリで:
+     a. システム共通レシピ（`isSystemRecipe = true`）
+     b. ユーザー自身が作成したレシピ（`createdBy = currentUserId`）
+     c. 他のユーザーが公開しているレシピ（`isPublic = true AND createdBy != currentUserId`）
+   - これら 3 種類のレシピをクエリして表示する
+   - ユーザーはシステムレシピをベースに自分用にカスタマイズしたレシピを作成可能（コピー機能）
+   - コピーされたレシピは新しいドキュメント ID で `recipes` コレクションに保存され、`createdBy` に当該ユーザーの ID と `isSystemRecipe = false` が設定される
+
+### 5.4. クエリの考慮事項
+
+よく使われるクエリパターンと、それをサポートするために必要なインデックス設計の考慮事項：
+
+- レシピの検索（タグ、難易度、調理時間でフィルタリング）
+- 人気のレシピ（お気に入り数でソート）
+- 最近追加されたレシピ（作成日時でソート）
+- ユーザーのお気に入りレシピ一覧
+- ジャンル別レシピ一覧
+- ユーザーが作成したレシピ一覧（`createdBy = currentUserId`）
+- システム共通レシピ一覧（`isSystemRecipe = true`）
+- 公開されている他ユーザーのレシピ一覧（`isPublic = true AND createdBy != currentUserId`）
+
+### 5.5. Firestore セキュリティルール
+
+Firestore のセキュリティルールは以下のポリシーに基づいて設計します：
+
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ユーザー認証関数
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // 現在のユーザーが指定されたユーザーIDと一致するか確認
+    function isUser(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // システムレシピかどうかを確認
+    function isSystemRecipe() {
+      return resource.data.isSystemRecipe == true;
+    }
+
+    // レシピの作成者かどうかを確認
+    function isRecipeOwner() {
+      return isAuthenticated() && resource.data.createdBy == request.auth.uid;
+    }
+
+    // レシピがパブリックかどうかを確認
+    function isPublicRecipe() {
+      return resource.data.isPublic == true;
+    }
+
+    // レシピコレクションのルール
+    match /recipes/{recipeId} {
+      // 読み取りルール：
+      // 1. システムレシピはすべてのユーザーが閲覧可能
+      // 2. 自分が作成したレシピは閲覧可能
+      // 3. パブリックに設定されたレシピは閲覧可能
+      allow read: if isAuthenticated() && (
+        isSystemRecipe() ||
+        isRecipeOwner() ||
+        isPublicRecipe()
+      );
+
+      // 作成ルール：認証済みユーザーのみレシピ作成可能
+      // システムレシピの作成は禁止（サーバーサイドでのみ作成可能）
+      allow create: if isAuthenticated() &&
+                     request.resource.data.isSystemRecipe == false &&
+                     request.resource.data.createdBy == request.auth.uid;
+
+      // 更新ルール：
+      // 1. 自分が作成したレシピのみ更新可能
+      // 2. システムレシピの更新は禁止（サーバーサイドでのみ更新可能）
+      allow update: if isAuthenticated() &&
+                      !isSystemRecipe() &&
+                      isRecipeOwner();
+
+      // 削除ルール：自分が作成したレシピのみ削除可能
+      allow delete: if isAuthenticated() &&
+                      !isSystemRecipe() &&
+                      isRecipeOwner();
+
+      // レシピの材料サブコレクションのルール
+      match /ingredients/{ingredientId} {
+        // 読み取りルール：親レシピと同じ権限
+        allow read: if isAuthenticated() && (
+          isSystemRecipe() ||
+          isRecipeOwner() ||
+          isPublicRecipe()
+        );
+
+        // 作成/更新/削除ルール：親レシピの所有者のみ可能
+        allow create, update, delete: if isAuthenticated() &&
+                                         !isSystemRecipe() &&
+                                         isRecipeOwner();
+      }
+
+      // レシピの手順サブコレクションのルール
+      match /steps/{stepId} {
+        // 読み取りルール：親レシピと同じ権限
+        allow read: if isAuthenticated() && (
+          isSystemRecipe() ||
+          isRecipeOwner() ||
+          isPublicRecipe()
+        );
+
+        // 作成/更新/削除ルール：親レシピの所有者のみ可能
+        allow create, update, delete: if isAuthenticated() &&
+                                         !isSystemRecipe() &&
+                                         isRecipeOwner();
+      }
+    }
+
+    // ユーザーコレクションのルール
+    match /users/{userId} {
+      // 自分のユーザードキュメントのみ読み書き可能
+      allow read, write: if isUser(userId);
+
+      // お気に入りサブコレクションのルール
+      match /favorites/{favoriteId} {
+        allow read, write: if isUser(userId);
+      }
+    }
+  }
+}
+```
+
+このセキュリティルールでは以下のポリシーを実装しています：
+
+1. **レシピへのアクセス制御**:
+
+   - システム共通レシピはすべての認証済みユーザーが閲覧可能
+   - ユーザー自身が作成したレシピは閲覧・編集・削除可能
+   - 他のユーザーの公開レシピは閲覧のみ可能
+
+2. **システムレシピの保護**:
+
+   - システムレシピはクライアント側からの更新や削除ができない
+   - システムレシピの作成・更新・削除はサーバーサイド（管理者）のみ可能
+
+3. **ユーザーデータの保護**:
+
+   - ユーザー情報やお気に入りリストは本人のみアクセス可能
+
+4. **整合性の確保**:
+   - レシピ作成時のユーザー ID は認証情報と一致している必要がある
+   - サブコレクション（材料・手順）は親レシピの権限を継承
+
+これらのルールにより、データの保護と適切なアクセス制御が保証されます。
+
+## 6. 開発上の考慮事項
 
 - **API キー/認証情報管理:** Google Cloud のサービスアカウントキーや Vertex AI API キーを安全に管理する (Secret Manager の利用推奨)。Firebase Functions の環境変数に設定する。
 - **エラーハンドリング:** API 通信エラー、音声認識エラー、LLM エラーなど、各段階でのエラーハンドリングとユーザーへのフィードバックを丁寧に実装する。

@@ -1,23 +1,76 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React from "react";
-import { StyleSheet, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { Button, Text } from "react-native-paper";
 import { RecipeDetail } from "../../../components/recipe/RecipeDetail";
-import { useRecipeStore } from "../../../store/recipeStore";
+import { Recipe, useRecipeStore } from "../../../store/recipeStore";
 
 export default function DetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { recipes } = useRecipeStore();
+  const { recipes, fetchRecipeDetails } = useRecipeStore();
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+  const [recipe, setRecipe] = useState<Recipe | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  // IDに基づいてレシピを検索
-  const recipe = recipes.find((r) => r.id === id);
+  // コンポーネントのマウント時またはIDが変更されたときにレシピ詳細を取得
+  useEffect(() => {
+    if (!id) {
+      setError("レシピIDが指定されていません");
+      return;
+    }
 
-  // レシピが見つからない場合
-  if (!recipe) {
+    // まずキャッシュを確認
+    const cachedRecipe = recipes.find((r) => r.id === id);
+    if (
+      cachedRecipe &&
+      cachedRecipe.ingredients?.length > 0 &&
+      cachedRecipe.steps?.length > 0
+    ) {
+      // すでに詳細情報が読み込まれている場合はそれを使用
+      setRecipe(cachedRecipe);
+      return;
+    }
+
+    // 詳細情報を取得
+    const loadDetails = async () => {
+      setIsLoading(true);
+      try {
+        await fetchRecipeDetails(id as string);
+        // fetchRecipeDetailsはストアを更新するので、
+        // 最新のレシピを再取得する
+        const updatedRecipe = recipes.find((r) => r.id === id);
+        setRecipe(updatedRecipe || null);
+        setError(null);
+      } catch (err) {
+        console.error("レシピ詳細の取得に失敗:", err);
+        setError("レシピの読み込みに失敗しました");
+        setRecipe(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadDetails();
+  }, [id, fetchRecipeDetails, recipes]);
+
+  // 読み込み中の表示
+  if (isLoading) {
     return (
       <View style={styles.container}>
-        <Text variant="headlineMedium">レシピが見つかりませんでした</Text>
+        <ActivityIndicator size="large" />
+        <Text style={styles.loadingText}>レシピ情報を読み込み中...</Text>
+      </View>
+    );
+  }
+
+  // エラー表示
+  if (error || !recipe) {
+    return (
+      <View style={styles.container}>
+        <Text variant="headlineMedium">
+          {error || "レシピが見つかりませんでした"}
+        </Text>
         <Button
           mode="contained"
           onPress={() => router.replace("/(drawer)/(home)")}
@@ -29,11 +82,7 @@ export default function DetailScreen() {
     );
   }
 
-  return (
-    <>
-      <RecipeDetail recipe={recipe} />
-    </>
-  );
+  return <RecipeDetail recipe={recipe} />;
 }
 
 const styles = StyleSheet.create({
@@ -45,5 +94,9 @@ const styles = StyleSheet.create({
   },
   button: {
     marginTop: 16,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
   },
 });

@@ -7,7 +7,9 @@
     "shell": "npm run build && firebase functions:shell",
     "start": "npm run shell",
     "deploy": "firebase deploy --only functions",
-    "logs": "firebase functions:log"
+    "deploy:rules": "firebase deploy --only firestore:rules",
+    "logs": "firebase functions:log",
+    "import-recipes": "npm run build && node lib/importRecipes.js"
   },
   "engines": {
     "node": "22"

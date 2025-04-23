@@ -1,17 +1,21 @@
 import { create } from "zustand";
-import sampleRecipes from "../assets/data/sample-recipes.json";
+import { auth } from "../config/firebase";
+import {
+  Ingredient as FirestoreIngredient,
+  Recipe as FirestoreRecipe,
+  Step as FirestoreStep,
+  recipeService,
+} from "../services/recipeService";
 
-export type Ingredient = {
-  name: string;
-  amount: string;
-};
-
-export type Step = {
+// 会話履歴のメッセージ型
+export type ConversationMessage = {
   id: string;
-  description: string;
-  image?: string; // 手順の画像URL（オプショナル）
+  text: string;
+  isUser: boolean;
+  timestamp: Date;
 };
 
+// フロントエンドで使用するレシピ型（JSONとFirestoreの互換性を保つ）
 export type Recipe = {
   id: string;
   title: string;
@@ -21,18 +25,20 @@ export type Recipe = {
   servings: number;
   difficulty: string;
   image: string;
-  ingredients: Ingredient[];
-  steps: Step[];
-  tips: string[];
+  ingredients: {
+    name: string;
+    amount: string;
+  }[];
+  steps: {
+    id: string;
+    description: string;
+    image?: string;
+  }[];
+  tips?: string[];
   tags: string[];
-};
-
-// 会話履歴のメッセージ型
-export type ConversationMessage = {
-  id: string;
-  text: string;
-  isUser: boolean;
-  timestamp: Date;
+  createdBy?: string;
+  isSystemRecipe?: boolean;
+  isPublic?: boolean;
 };
 
 type RecipeState = {
@@ -43,32 +49,164 @@ type RecipeState = {
   isVoiceListening: boolean;
   recognizedText: string;
   lastAIResponse: string | null;
-  conversationHistory: ConversationMessage[]; // 会話履歴
-  isDialogVisible: boolean; // ダイアログ表示状態
+  conversationHistory: ConversationMessage[];
+  isDialogVisible: boolean;
 
-  // アクション
+  // データ取得アクション
+  fetchRecipes: () => Promise<void>;
+  fetchRecipeDetails: (recipeId: string) => Promise<Recipe>;
+
+  // レシピ関連アクション
   setCurrentRecipe: (recipe: Recipe) => void;
+
+  // ステップナビゲーション
   nextStep: () => void;
   previousStep: () => void;
   goToStep: (index: number) => void;
+
+  // 音声認識関連アクション
   setVoiceListening: (isListening: boolean) => void;
   setRecognizedText: (text: string) => void;
   setLastAIResponse: (response: string | null) => void;
-  addConversationMessage: (text: string, isUser: boolean) => void; // 会話履歴にメッセージを追加
-  setDialogVisible: (visible: boolean) => void; // ダイアログ表示状態を設定
+
+  // 会話履歴関連アクション
+  addConversationMessage: (text: string, isUser: boolean) => void;
+
+  // ダイアログ表示状態
+  setDialogVisible: (visible: boolean) => void;
+
+  // セッションリセット
   resetCookingSession: () => void;
 };
 
-export const useRecipeStore = create<RecipeState>((set) => ({
-  recipes: sampleRecipes as Recipe[],
+// FirestoreのデータをフロントエンドのRecipe型に変換する関数
+const convertFirestoreRecipe = (
+  firestoreRecipe: FirestoreRecipe,
+  firestoreIngredients: FirestoreIngredient[],
+  firestoreSteps: FirestoreStep[]
+): Recipe => {
+  return {
+    id: firestoreRecipe.id,
+    title: firestoreRecipe.title,
+    description: firestoreRecipe.description,
+    prepTime:
+      typeof firestoreRecipe.prepTime === "number"
+        ? `${firestoreRecipe.prepTime}分`
+        : firestoreRecipe.prepTime,
+    cookTime:
+      typeof firestoreRecipe.cookTime === "number"
+        ? `${firestoreRecipe.cookTime}分`
+        : firestoreRecipe.cookTime,
+    servings: firestoreRecipe.servings,
+    difficulty: firestoreRecipe.difficulty,
+    image: firestoreRecipe.image || "",
+    ingredients: firestoreIngredients.map((ing) => ({
+      name: ing.name,
+      amount: ing.quantity
+        ? `${ing.quantity}${ing.unit || ""}`
+        : ing.unit || "",
+    })),
+    steps: firestoreSteps.map((step) => ({
+      id: step.order.toString(),
+      description: step.instruction,
+      image: step.imageUrl,
+    })),
+    tips: [], // Firestoreのデータモデルに追加する場合は修正
+    tags: firestoreRecipe.tags || [],
+    createdBy: firestoreRecipe.createdBy,
+    isSystemRecipe: firestoreRecipe.isSystemRecipe,
+    isPublic: firestoreRecipe.isPublic,
+  };
+};
+
+export const useRecipeStore = create<RecipeState>((set, get) => ({
+  recipes: [],
   currentRecipe: null,
   currentStepIndex: 0,
   isLoadingRecipes: false,
   isVoiceListening: false,
   recognizedText: "",
   lastAIResponse: null,
-  conversationHistory: [], // 会話履歴の初期値
-  isDialogVisible: false, // ダイアログ表示状態の初期値
+  conversationHistory: [],
+  isDialogVisible: false,
+
+  // Firestoreからレシピを取得
+  fetchRecipes: async () => {
+    set({ isLoadingRecipes: true });
+    try {
+      const userId = auth.currentUser?.uid || null;
+
+      // ユーザーがログインしている場合のみレシピを取得
+      // 未ログインの場合は空の配列を返す
+      const firestoreRecipes = userId
+        ? await recipeService.getAccessibleRecipes(userId)
+        : [];
+
+      // Firestoreのレシピを簡易版のRecipeオブジェクトに変換
+      const recipes = firestoreRecipes.map(
+        (recipe) =>
+          ({
+            id: recipe.id,
+            title: recipe.title,
+            description: recipe.description,
+            prepTime:
+              typeof recipe.prepTime === "number"
+                ? `${recipe.prepTime}分`
+                : recipe.prepTime,
+            cookTime:
+              typeof recipe.cookTime === "number"
+                ? `${recipe.cookTime}分`
+                : recipe.cookTime,
+            servings: recipe.servings,
+            difficulty: recipe.difficulty,
+            image: recipe.image || "",
+            ingredients: [], // 詳細取得時に設定
+            steps: [], // 詳細取得時に設定
+            tips: [], // 詳細取得時に設定（現在未サポート）
+            tags: recipe.tags || [],
+            createdBy: recipe.createdBy,
+            isSystemRecipe: recipe.isSystemRecipe,
+            isPublic: recipe.isPublic,
+          } as Recipe)
+      );
+
+      set({ recipes, isLoadingRecipes: false });
+    } catch (error) {
+      console.error("レシピ取得エラー:", error);
+      set({ isLoadingRecipes: false });
+    }
+  },
+
+  // レシピ詳細を取得（材料と手順を含む）
+  fetchRecipeDetails: async (recipeId) => {
+    try {
+      const {
+        recipe: firestoreRecipe,
+        ingredients: firestoreIngredients,
+        steps: firestoreSteps,
+      } = await recipeService.getRecipeDetails(recipeId);
+
+      // レシピ詳細をフロントエンド用の形式に変換
+      const recipe = convertFirestoreRecipe(
+        firestoreRecipe,
+        firestoreIngredients,
+        firestoreSteps
+      );
+
+      // 現在のレシピを設定
+      set({ currentRecipe: recipe });
+
+      // レシピリストも更新
+      set((state) => ({
+        recipes: state.recipes.map((r) => (r.id === recipe.id ? recipe : r)),
+      }));
+
+      return recipe;
+    } catch (error) {
+      console.error("レシピ詳細取得エラー:", error);
+      throw error;
+    }
+  },
 
   // レシピ関連アクション
   setCurrentRecipe: (recipe) =>
@@ -132,7 +270,7 @@ export const useRecipeStore = create<RecipeState>((set) => ({
       currentStepIndex: 0,
       recognizedText: "",
       lastAIResponse: null,
-      conversationHistory: [], // 会話履歴もリセット
-      isDialogVisible: false, // ダイアログ表示状態もリセット
+      conversationHistory: [],
+      isDialogVisible: false,
     }),
 }));

@@ -1,18 +1,32 @@
 import { useNavigation, useRouter } from "expo-router";
-import { useState } from "react";
-import { FlatList, StyleSheet, TouchableOpacity, View } from "react-native";
+import { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  FlatList,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { Appbar, Card, Portal, Snackbar, Text } from "react-native-paper";
 import { RecipeImageUploader } from "../../../components/ui/RecipeImageUploader";
+import { RecipeProcessingResult } from "../../../hooks/useImageUpload";
 import { useImageUploadStore } from "../../../store/imageUploadStore";
 import { Recipe, useRecipeStore } from "../../../store/recipeStore";
 
 export default function HomeScreen() {
-  const { recipes } = useRecipeStore();
+  const { recipes, fetchRecipes, isLoadingRecipes } = useRecipeStore();
   const router = useRouter();
   const navigation = useNavigation<any>();
   const [showUploader, setShowUploader] = useState(false);
   const [snackbarVisible, setSnackbarVisible] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] =
+    useState("画像のアップロードが完了しました");
   const { addUploadResult } = useImageUploadStore();
+
+  // コンポーネントのマウント時にFirestoreからレシピを取得
+  useEffect(() => {
+    fetchRecipes();
+  }, [fetchRecipes]);
 
   // レシピカード選択時の処理
   const handleRecipeSelect = (recipe: Recipe) => {
@@ -35,10 +49,30 @@ export default function HomeScreen() {
     addUploadResult(result);
 
     // スナックバーを表示
+    setSnackbarMessage("画像のアップロードが完了しました");
+    setSnackbarVisible(true);
+  };
+
+  // レシピ処理完了時の処理
+  const handleRecipeProcessed = (recipeResult: RecipeProcessingResult) => {
+    // レシピが解析され保存された場合、レシピリストを更新
+    fetchRecipes();
+
+    // スナックバーを表示
+    setSnackbarMessage(
+      `レシピ「${recipeResult.recipeData.title}」が登録されました`
+    );
     setSnackbarVisible(true);
 
     // アップローダーを閉じる
-    setShowUploader(false);
+    setTimeout(() => {
+      setShowUploader(false);
+    }, 1000);
+
+    // 少し待ってから、詳細画面に遷移
+    setTimeout(() => {
+      router.push(`/(drawer)/(home)/detail?id=${recipeResult.recipeId}`);
+    }, 1500);
   };
 
   // レシピカードの描画
@@ -59,7 +93,7 @@ export default function HomeScreen() {
           </Text>
           <View style={styles.cardMeta}>
             <Text variant="bodySmall" style={styles.metaItem}>
-              調理時間: {item.cookTime}
+              調理時間: {item.cookTime}分
             </Text>
             <Text variant="bodySmall" style={styles.metaItem}>
               難易度: {item.difficulty}
@@ -75,17 +109,34 @@ export default function HomeScreen() {
       <Appbar.Header>
         <Appbar.Action icon="menu" onPress={openDrawer} />
         <Appbar.Content title="AIry Recipe" />
-        <Appbar.Action icon="cog" onPress={toggleUploader} />
+        <Appbar.Action icon="book-open-page-variant" onPress={toggleUploader} />
       </Appbar.Header>
 
       {/* レシピリスト */}
-      <FlatList
-        data={recipes}
-        renderItem={renderRecipeCard}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.recipeList}
-        style={{ flex: 1 }}
-      />
+      {isLoadingRecipes ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" />
+          <Text style={styles.loadingText}>レシピを読み込み中...</Text>
+        </View>
+      ) : recipes.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Text variant="headlineMedium" style={styles.emptyText}>
+            レシピがありません
+          </Text>
+          <Text variant="bodyMedium" style={styles.emptySubtext}>
+            レシピデータがFirestoreに登録されていません。
+            サンプルレシピのインポートスクリプトを実行してください。
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          data={recipes}
+          renderItem={renderRecipeCard}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.recipeList}
+          style={{ flex: 1 }}
+        />
+      )}
 
       {/* 画像アップローダーのポータル */}
       <Portal>
@@ -95,7 +146,10 @@ export default function HomeScreen() {
               <Appbar.Content title="レシピ本の写真撮影・アップロード" />
               <Appbar.Action icon="close" onPress={toggleUploader} />
             </Appbar.Header>
-            <RecipeImageUploader onUploadComplete={handleUploadComplete} />
+            <RecipeImageUploader
+              onUploadComplete={handleUploadComplete}
+              onRecipeProcessed={handleRecipeProcessed}
+            />
           </View>
         )}
       </Portal>
@@ -111,7 +165,7 @@ export default function HomeScreen() {
             onPress: () => setSnackbarVisible(false),
           }}
         >
-          画像のアップロードが完了しました
+          {snackbarMessage}
         </Snackbar>
       </Portal>
     </>
@@ -173,5 +227,28 @@ const styles = StyleSheet.create({
   uploaderHeader: {
     backgroundColor: "#f5f5f5",
     elevation: 4,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  emptyText: {
+    marginBottom: 12,
+    textAlign: "center",
+  },
+  emptySubtext: {
+    textAlign: "center",
+    opacity: 0.7,
   },
 });

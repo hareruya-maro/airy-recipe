@@ -1,0 +1,107 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ユーザー認証関数
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // 現在のユーザーが指定されたユーザーIDと一致するか確認
+    function isUser(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // システムレシピかどうかを確認
+    function isSystemRecipe() {
+      return resource.data.isSystemRecipe == true;
+    }
+    
+    // レシピの作成者かどうかを確認
+    function isRecipeOwner() {
+      return isAuthenticated() && resource.data.createdBy == request.auth.uid;
+    }
+    
+    // レシピがパブリックかどうかを確認
+    function isPublicRecipe() {
+      return resource.data.isPublic == true;
+    }
+    
+    // レシピコレクションのルール
+    match /recipes/{recipeId} {
+      // 読み取りルール：
+      // 1. システムレシピはすべてのユーザーが閲覧可能
+      // 2. 自分が作成したレシピは閲覧可能
+      // 3. パブリックに設定されたレシピは閲覧可能
+      allow read: if isAuthenticated() && (
+        isSystemRecipe() || 
+        isRecipeOwner() || 
+        isPublicRecipe()
+      );
+      
+      // 作成ルール：認証済みユーザーのみレシピ作成可能
+      // システムレシピの作成は禁止（サーバーサイドでのみ作成可能）
+      allow create: if isAuthenticated() && 
+                     request.resource.data.isSystemRecipe == false && 
+                     request.resource.data.createdBy == request.auth.uid;
+      
+      // 更新ルール：
+      // 1. 自分が作成したレシピのみ更新可能
+      // 2. システムレシピの更新は禁止（サーバーサイドでのみ更新可能）
+      allow update: if isAuthenticated() && 
+                      !isSystemRecipe() && 
+                      isRecipeOwner();
+      
+      // 削除ルール：自分が作成したレシピのみ削除可能
+      allow delete: if isAuthenticated() && 
+                      !isSystemRecipe() && 
+                      isRecipeOwner();
+      
+      // レシピの材料サブコレクションのルール
+      match /ingredients/{ingredientId} {
+        // 読み取りルール：親レシピと同じ権限
+        allow read: if isAuthenticated() && (
+          isSystemRecipe() || 
+          isRecipeOwner() || 
+          isPublicRecipe()
+        );
+        
+        // 作成/更新/削除ルール：親レシピの所有者のみ可能
+        allow create, update, delete: if isAuthenticated() && 
+                                         !isSystemRecipe() && 
+                                         isRecipeOwner();
+      }
+      
+      // レシピの手順サブコレクションのルール
+      match /steps/{stepId} {
+        // 読み取りルール：親レシピと同じ権限
+        allow read: if isAuthenticated() && (
+          isSystemRecipe() || 
+          isRecipeOwner() || 
+          isPublicRecipe()
+        );
+        
+        // 作成/更新/削除ルール：親レシピの所有者のみ可能
+        allow create, update, delete: if isAuthenticated() && 
+                                         !isSystemRecipe() && 
+                                         isRecipeOwner();
+      }
+    }
+    
+    // ユーザーコレクションのルール
+    match /users/{userId} {
+      // 自分のユーザードキュメントのみ読み書き可能
+      allow read, write: if isUser(userId);
+      
+      // お気に入りサブコレクションのルール
+      match /favorites/{favoriteId} {
+        allow read, write: if isUser(userId);
+      }
+    }
+    
+    // デフォルトルール - 明示的に指定されていない全てのドキュメントへのアクセスを禁止
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
