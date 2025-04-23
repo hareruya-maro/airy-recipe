@@ -1,4 +1,5 @@
 import { initializeApp } from "firebase/app";
+import { getAuth, signInAnonymously, signOut } from "firebase/auth";
 import { getFunctions } from "firebase/functions";
 import { getStorage } from "firebase/storage";
 
@@ -22,4 +23,28 @@ const functions = getFunctions(app);
 // Cloud Storage
 const storage = getStorage(app);
 
-export { app, functions, storage };
+// Firebase Authentication
+const auth = getAuth(app);
+
+// 匿名サインイン関数
+const signInAnonymousUser = async () => {
+  try {
+    const userCredential = await signInAnonymously(auth);
+    return userCredential.user;
+  } catch (error) {
+    console.error("匿名認証エラー:", error);
+    throw error;
+  }
+};
+
+// サインアウト関数
+const signOutUser = async () => {
+  try {
+    await signOut(auth);
+  } catch (error) {
+    console.error("サインアウトエラー:", error);
+    throw error;
+  }
+};
+
+export { app, auth, functions, signInAnonymousUser, signOutUser, storage };
