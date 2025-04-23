@@ -30,6 +30,7 @@ export interface Recipe {
 // Firestoreの材料ドキュメントの型定義
 export interface Ingredient {
   name: string;
+  order: number;
   quantity: number;
   unit: string;
   note?: string;
@@ -149,7 +150,6 @@ export const recipeService = {
     recipeId: string
   ): Promise<{ recipe: Recipe; ingredients: Ingredient[]; steps: Step[] }> => {
     try {
-      console.log("レシピ詳細取得:", recipeId);
       // レシピのメインデータを取得
       const recipeRef = doc(db, "recipes", recipeId);
       const recipeSnap = await getDoc(recipeRef);
@@ -160,15 +160,13 @@ export const recipeService = {
 
       const recipe = recipeSnap.data() as Recipe;
 
-      console.log("材料を取得:", recipeId);
       // 材料を取得
       const ingredientsRef = collection(db, "recipes", recipeId, "ingredients");
       const ingredientsSnap = await getDocs(ingredientsRef);
-      const ingredients = ingredientsSnap.docs.map(
-        (doc) => doc.data() as Ingredient
-      );
+      const ingredients = ingredientsSnap.docs
+        .map((doc) => doc.data() as Ingredient)
+        .sort((a, b) => a.order - b.order);
 
-      console.log("手順を取得:", recipeId);
       // 手順を取得
       const stepsRef = collection(db, "recipes", recipeId, "steps");
       const stepsSnap = await getDocs(stepsRef);

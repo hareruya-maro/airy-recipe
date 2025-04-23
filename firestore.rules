@@ -13,18 +13,18 @@ service cloud.firestore {
     }
     
     // システムレシピかどうかを確認
-    function isSystemRecipe() {
-      return resource.data.isSystemRecipe == true;
+    function isSystemRecipe(recipeData) {
+      return recipeData.isSystemRecipe == true;
     }
     
     // レシピの作成者かどうかを確認
-    function isRecipeOwner() {
-      return isAuthenticated() && resource.data.createdBy == request.auth.uid;
+    function isRecipeOwner(recipeData) {
+      return isAuthenticated() && recipeData.createdBy == request.auth.uid;
     }
     
     // レシピがパブリックかどうかを確認
-    function isPublicRecipe() {
-      return resource.data.isPublic == true;
+    function isPublicRecipe(recipeData) {
+      return recipeData.isPublic == true;
     }
     
     // レシピコレクションのルール
@@ -34,9 +34,9 @@ service cloud.firestore {
       // 2. 自分が作成したレシピは閲覧可能
       // 3. パブリックに設定されたレシピは閲覧可能
       allow read: if isAuthenticated() && (
-        isSystemRecipe() || 
-        isRecipeOwner() || 
-        isPublicRecipe()
+        isSystemRecipe(resource.data) || 
+        isRecipeOwner(resource.data) || 
+        isPublicRecipe(resource.data)
       );
       
       // 作成ルール：認証済みユーザーのみレシピ作成可能
@@ -49,42 +49,52 @@ service cloud.firestore {
       // 1. 自分が作成したレシピのみ更新可能
       // 2. システムレシピの更新は禁止（サーバーサイドでのみ更新可能）
       allow update: if isAuthenticated() && 
-                      !isSystemRecipe() && 
-                      isRecipeOwner();
+                      !isSystemRecipe(resource.data) && 
+                      isRecipeOwner(resource.data);
       
       // 削除ルール：自分が作成したレシピのみ削除可能
       allow delete: if isAuthenticated() && 
-                      !isSystemRecipe() && 
-                      isRecipeOwner();
+                      !isSystemRecipe(resource.data) && 
+                      isRecipeOwner(resource.data);
       
       // レシピの材料サブコレクションのルール
       match /ingredients/{ingredientId} {
+        // 親レシピのデータを取得
+        function getParentRecipe() {
+          return get(/databases/$(database)/documents/recipes/$(recipeId)).data;
+        }
+        
         // 読み取りルール：親レシピと同じ権限
         allow read: if isAuthenticated() && (
-          isSystemRecipe() || 
-          isRecipeOwner() || 
-          isPublicRecipe()
+          isSystemRecipe(getParentRecipe()) || 
+          isRecipeOwner(getParentRecipe()) || 
+          isPublicRecipe(getParentRecipe())
         );
         
         // 作成/更新/削除ルール：親レシピの所有者のみ可能
         allow create, update, delete: if isAuthenticated() && 
-                                         !isSystemRecipe() && 
-                                         isRecipeOwner();
+                                         !isSystemRecipe(getParentRecipe()) && 
+                                         isRecipeOwner(getParentRecipe());
       }
       
       // レシピの手順サブコレクションのルール
       match /steps/{stepId} {
+        // 親レシピのデータを取得
+        function getParentRecipe() {
+          return get(/databases/$(database)/documents/recipes/$(recipeId)).data;
+        }
+        
         // 読み取りルール：親レシピと同じ権限
         allow read: if isAuthenticated() && (
-          isSystemRecipe() || 
-          isRecipeOwner() || 
-          isPublicRecipe()
+          isSystemRecipe(getParentRecipe()) || 
+          isRecipeOwner(getParentRecipe()) || 
+          isPublicRecipe(getParentRecipe())
         );
         
         // 作成/更新/削除ルール：親レシピの所有者のみ可能
         allow create, update, delete: if isAuthenticated() && 
-                                         !isSystemRecipe() && 
-                                         isRecipeOwner();
+                                         !isSystemRecipe(getParentRecipe()) && 
+                                         isRecipeOwner(getParentRecipe());
       }
     }
     
