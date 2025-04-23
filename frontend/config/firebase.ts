@@ -1,5 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getFunctions } from "firebase/functions";
+import { getStorage } from "firebase/storage";
 
 // Firebaseの設定
 // 注: 実際の値は.envファイルや環境変数から取得することをお勧めします
@@ -18,4 +19,7 @@ const app = initializeApp(firebaseConfig);
 // Cloud Functions
 const functions = getFunctions(app);
 
-export { app, functions };
+// Cloud Storage
+const storage = getStorage(app);
+
+export { app, functions, storage };

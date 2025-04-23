@@ -1,12 +1,18 @@
 import { useNavigation, useRouter } from "expo-router";
+import { useState } from "react";
 import { FlatList, StyleSheet, TouchableOpacity, View } from "react-native";
-import { Appbar, Card, Text } from "react-native-paper";
+import { Appbar, Card, Portal, Snackbar, Text } from "react-native-paper";
+import { RecipeImageUploader } from "../../../components/ui/RecipeImageUploader";
+import { useImageUploadStore } from "../../../store/imageUploadStore";
 import { Recipe, useRecipeStore } from "../../../store/recipeStore";
 
 export default function HomeScreen() {
   const { recipes } = useRecipeStore();
   const router = useRouter();
   const navigation = useNavigation<any>();
+  const [showUploader, setShowUploader] = useState(false);
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
+  const { addUploadResult } = useImageUploadStore();
 
   // レシピカード選択時の処理
   const handleRecipeSelect = (recipe: Recipe) => {
@@ -16,6 +22,23 @@ export default function HomeScreen() {
   // ドロワーを開く処理
   const openDrawer = () => {
     navigation.openDrawer();
+  };
+
+  // アップローダーの表示/非表示を切り替える
+  const toggleUploader = () => {
+    setShowUploader(!showUploader);
+  };
+
+  // アップロード完了時の処理
+  const handleUploadComplete = (result: { folder: string; urls: string[] }) => {
+    // アップロード結果をストアに保存
+    addUploadResult(result);
+
+    // スナックバーを表示
+    setSnackbarVisible(true);
+
+    // アップローダーを閉じる
+    setShowUploader(false);
   };
 
   // レシピカードの描画
@@ -52,8 +75,10 @@ export default function HomeScreen() {
       <Appbar.Header>
         <Appbar.Action icon="menu" onPress={openDrawer} />
         <Appbar.Content title="AIry Recipe" />
-        <Appbar.Action icon="cog" onPress={() => {}} />
+        <Appbar.Action icon="cog" onPress={toggleUploader} />
       </Appbar.Header>
+
+      {/* レシピリスト */}
       <FlatList
         data={recipes}
         renderItem={renderRecipeCard}
@@ -61,6 +86,34 @@ export default function HomeScreen() {
         contentContainerStyle={styles.recipeList}
         style={{ flex: 1 }}
       />
+
+      {/* 画像アップローダーのポータル */}
+      <Portal>
+        {showUploader && (
+          <View style={styles.uploaderContainer}>
+            <Appbar.Header style={styles.uploaderHeader}>
+              <Appbar.Content title="レシピ本の写真撮影・アップロード" />
+              <Appbar.Action icon="close" onPress={toggleUploader} />
+            </Appbar.Header>
+            <RecipeImageUploader onUploadComplete={handleUploadComplete} />
+          </View>
+        )}
+      </Portal>
+
+      {/* アップロード完了通知 */}
+      <Portal>
+        <Snackbar
+          visible={snackbarVisible}
+          onDismiss={() => setSnackbarVisible(false)}
+          duration={3000}
+          action={{
+            label: "閉じる",
+            onPress: () => setSnackbarVisible(false),
+          }}
+        >
+          画像のアップロードが完了しました
+        </Snackbar>
+      </Portal>
     </>
   );
 }
@@ -107,5 +160,18 @@ const styles = StyleSheet.create({
   metaItem: {
     marginRight: 16,
     opacity: 0.6,
+  },
+  uploaderContainer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "white",
+    zIndex: 1000,
+  },
+  uploaderHeader: {
+    backgroundColor: "#f5f5f5",
+    elevation: 4,
   },
 });

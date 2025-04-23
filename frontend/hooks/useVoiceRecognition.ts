@@ -11,6 +11,7 @@ import { useRecipeStore } from "../store/recipeStore";
 // コールバック関数の型定義
 type VoiceCallbacks = {
   onShowIngredients?: (isShow: boolean) => void; // 材料表示用コールバック
+  onVoiceRecognitionResult?: (text: string) => boolean; // 音声認識結果処理用コールバック（返り値はコマンドが処理されたかどうか）
 };
 
 export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
@@ -141,6 +142,11 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
 
         // UIに認識テキストを表示
         setRecognizedText(recognizedText);
+
+        // コールバックが提供されている場合は実行
+        if (callbacks?.onVoiceRecognitionResult) {
+          callbacks.onVoiceRecognitionResult(recognizedText);
+        }
 
         // 現在の認識テキストを更新
         currentTextRef.current = recognizedText;
@@ -299,6 +305,17 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
   // コマンド処理のメイン関数
   const processVoiceCommand = (text: string) => {
     if (!text.trim()) return; // 空のテキストは処理しない
+
+    // まず外部のコールバックによる処理を試みる
+    // もしコールバックがtrueを返したら（コマンドが処理されたら）、ここで終了
+    if (
+      callbacks?.onVoiceRecognitionResult &&
+      callbacks.onVoiceRecognitionResult(text)
+    ) {
+      console.log("外部コールバックでコマンドが処理されました:", text);
+      restartVoiceRecognition();
+      return;
+    }
 
     // すべて小文字で比較して、部分一致でコマンドを処理
     const lowerText = text.toLowerCase();
