@@ -27,6 +27,15 @@ export default function HomeLayout() {
           headerShown: false,
         }}
       />
+      {/* 新しいimageUploadページを追加 */}
+      <Stack.Screen
+        name="imageUpload"
+        options={{
+          title: "レシピ本の写真撮影・アップロード",
+          headerShown: false,
+          presentation: "card",
+        }}
+      />
       {/* CookingModeをモーダル表示として設定 */}
       <Stack.Screen
         name="cookingMode"

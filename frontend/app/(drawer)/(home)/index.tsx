@@ -8,20 +8,14 @@ import {
   View,
 } from "react-native";
 import { Appbar, Card, Portal, Snackbar, Text } from "react-native-paper";
-import { RecipeImageUploader } from "../../../components/ui/RecipeImageUploader";
-import { RecipeProcessingResult } from "../../../hooks/useImageUpload";
-import { useImageUploadStore } from "../../../store/imageUploadStore";
 import { Recipe, useRecipeStore } from "../../../store/recipeStore";
 
 export default function HomeScreen() {
   const { recipes, fetchRecipes, isLoadingRecipes } = useRecipeStore();
   const router = useRouter();
   const navigation = useNavigation<any>();
-  const [showUploader, setShowUploader] = useState(false);
   const [snackbarVisible, setSnackbarVisible] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] =
-    useState("画像のアップロードが完了しました");
-  const { addUploadResult } = useImageUploadStore();
+  const [snackbarMessage, setSnackbarMessage] = useState("");
 
   // コンポーネントのマウント時にFirestoreからレシピを取得
   useEffect(() => {
@@ -38,41 +32,9 @@ export default function HomeScreen() {
     navigation.openDrawer();
   };
 
-  // アップローダーの表示/非表示を切り替える
-  const toggleUploader = () => {
-    setShowUploader(!showUploader);
-  };
-
-  // アップロード完了時の処理
-  const handleUploadComplete = (result: { folder: string; urls: string[] }) => {
-    // アップロード結果をストアに保存
-    addUploadResult(result);
-
-    // スナックバーを表示
-    setSnackbarMessage("画像のアップロードが完了しました");
-    setSnackbarVisible(true);
-  };
-
-  // レシピ処理完了時の処理
-  const handleRecipeProcessed = (recipeResult: RecipeProcessingResult) => {
-    // レシピが解析され保存された場合、レシピリストを更新
-    fetchRecipes();
-
-    // スナックバーを表示
-    setSnackbarMessage(
-      `レシピ「${recipeResult.recipeData.title}」が登録されました`
-    );
-    setSnackbarVisible(true);
-
-    // アップローダーを閉じる
-    setTimeout(() => {
-      setShowUploader(false);
-    }, 1000);
-
-    // 少し待ってから、詳細画面に遷移
-    setTimeout(() => {
-      router.push(`/(drawer)/(home)/detail?id=${recipeResult.recipeId}`);
-    }, 1500);
+  // イメージアップロードページに遷移
+  const navigateToImageUpload = () => {
+    router.push("/(drawer)/(home)/imageUpload");
   };
 
   // レシピカードの描画
@@ -109,7 +71,10 @@ export default function HomeScreen() {
       <Appbar.Header>
         <Appbar.Action icon="menu" onPress={openDrawer} />
         <Appbar.Content title="AIry Recipe" />
-        <Appbar.Action icon="book-open-page-variant" onPress={toggleUploader} />
+        <Appbar.Action
+          icon="book-open-page-variant"
+          onPress={navigateToImageUpload}
+        />
       </Appbar.Header>
 
       {/* レシピリスト */}
@@ -138,23 +103,7 @@ export default function HomeScreen() {
         />
       )}
 
-      {/* 画像アップローダーのポータル */}
-      <Portal>
-        {showUploader && (
-          <View style={styles.uploaderContainer}>
-            <Appbar.Header style={styles.uploaderHeader}>
-              <Appbar.Content title="レシピ本の写真撮影・アップロード" />
-              <Appbar.Action icon="close" onPress={toggleUploader} />
-            </Appbar.Header>
-            <RecipeImageUploader
-              onUploadComplete={handleUploadComplete}
-              onRecipeProcessed={handleRecipeProcessed}
-            />
-          </View>
-        )}
-      </Portal>
-
-      {/* アップロード完了通知 */}
+      {/* スナックバー通知 */}
       <Portal>
         <Snackbar
           visible={snackbarVisible}
@@ -214,17 +163,6 @@ const styles = StyleSheet.create({
   metaItem: {
     marginRight: 16,
     opacity: 0.6,
-  },
-  uploaderContainer: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 1000,
-  },
-  uploaderHeader: {
-    elevation: 4,
   },
   loadingContainer: {
     flex: 1,

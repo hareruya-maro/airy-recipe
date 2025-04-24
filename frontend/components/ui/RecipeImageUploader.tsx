@@ -1,12 +1,16 @@
 import { useRef, useState } from "react";
-import { FlatList, Image, StyleSheet, View } from "react-native";
+import {
+  FlatList,
+  Image,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+} from "react-native";
 import {
   ActivityIndicator,
   Button,
   Card,
-  FAB,
   IconButton,
-  Menu,
   Portal,
   ProgressBar,
   Snackbar,
@@ -19,7 +23,7 @@ import {
   useImageUpload,
 } from "../../hooks/useImageUpload";
 
-type RecipeImageUploaderProps = {
+export type RecipeImageUploaderProps = {
   onUploadComplete?: (result: { folder: string; urls: string[] }) => void;
   onRecipeProcessed?: (recipeResult: RecipeProcessingResult) => void;
 };
@@ -52,6 +56,10 @@ export const RecipeImageUploader = ({
   } = useImageUpload();
 
   const prevRecipeResultRef = useRef<RecipeProcessingResult | null>(null);
+
+  const { width } = useWindowDimensions();
+  const styles = makeStyle({ width });
+  // スナックバーの表示
 
   // メニューを開く・閉じる
   const openMenu = () => setMenuVisible(true);
@@ -184,6 +192,35 @@ export const RecipeImageUploader = ({
       {/* エラーメッセージ */}
       {error && <Text style={styles.errorText}>{error}</Text>}
 
+      {images.length === 0 && (
+        <View style={styles.emptyStateContainer}>
+          <Text style={styles.emptyStateText}>
+            画像を追加してください。下のボタンから写真を撮影するか、
+            ギャラリーから選択できます。
+          </Text>
+
+          <View style={styles.actionButtonsContainer}>
+            <Button
+              mode="outlined"
+              icon="camera"
+              onPress={handleTakePicture}
+              style={styles.actionButton}
+            >
+              写真を撮影
+            </Button>
+
+            <Button
+              mode="outlined"
+              icon="image-multiple"
+              onPress={handlePickImage}
+              style={styles.actionButton}
+            >
+              ギャラリーから選択
+            </Button>
+          </View>
+        </View>
+      )}
+
       {/* 選択された画像のリスト */}
       {images.length > 0 && (
         <View style={styles.imagesContainer}>
@@ -200,13 +237,32 @@ export const RecipeImageUploader = ({
             data={images}
             renderItem={renderImageItem}
             keyExtractor={(item) => item.id}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.imagesList}
+            numColumns={2}
+            contentContainerStyle={[styles.imagesList, { gap: 16 }]}
+            columnWrapperStyle={{ gap: 16 }}
           />
-
           <View style={styles.buttonContainer}>
-            {/* 通常アップロードボタン */}
+            {/* メディア追加ボタン */}
+            <View style={styles.mediaButtonsContainer}>
+              <Button
+                mode="outlined"
+                icon="camera"
+                onPress={handleTakePicture}
+                style={styles.mediaButton}
+              >
+                写真を追加
+              </Button>
+              <Button
+                mode="outlined"
+                icon="image-multiple"
+                onPress={handlePickImage}
+                style={styles.mediaButton}
+              >
+                画像を追加
+              </Button>
+            </View>
+
+            {/* アップロードボタン */}
             <Button
               mode="outlined"
               onPress={handleUpload}
@@ -267,28 +323,6 @@ export const RecipeImageUploader = ({
         </View>
       )}
 
-      {/* FABとメニュー */}
-      <Portal>
-        <View style={styles.fabContainer}>
-          <Menu
-            visible={menuVisible}
-            onDismiss={closeMenu}
-            anchor={<FAB icon="cog" style={styles.fab} onPress={openMenu} />}
-          >
-            <Menu.Item
-              leadingIcon="camera"
-              onPress={handleTakePicture}
-              title="写真を撮影"
-            />
-            <Menu.Item
-              leadingIcon="image-multiple"
-              onPress={handlePickImage}
-              title="ギャラリーから選択"
-            />
-          </Menu>
-        </View>
-      </Portal>
-
       {/* スナックバー通知 */}
       <Portal>
         <Snackbar
@@ -303,103 +337,123 @@ export const RecipeImageUploader = ({
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  errorText: {
-    color: "#F44336",
-    margin: 16,
-  },
-  fabContainer: {
-    position: "absolute",
-    right: 16,
-    bottom: 16,
-  },
-  fab: {
-    // backgroundColor: "#2196F3",
-  },
-  imagesContainer: {
-    marginVertical: 16,
-  },
-  imagesHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    marginBottom: 8,
-  },
-  imagesTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  imagesList: {
-    paddingHorizontal: 16,
-  },
-  imageItem: {
-    width: 200,
-    marginRight: 16,
-  },
-  imageContainer: {
-    position: "relative",
-    height: 150,
-  },
-  image: {
-    width: "100%",
-    height: "100%",
-    borderTopLeftRadius: 8,
-    borderTopRightRadius: 8,
-  },
-  uploadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 16,
-  },
-  uploadingText: {
-    color: "white",
-    marginBottom: 8,
-  },
-  completeOverlay: {
-    position: "absolute",
-    top: 8,
-    right: 8,
-    backgroundColor: "white",
-    borderRadius: 20,
-  },
-  buttonContainer: {
-    margin: 16,
-  },
-  uploadButton: {
-    marginBottom: 8,
-  },
-  outlineButton: {
-    marginBottom: 16,
-  },
-  processingContainer: {
-    padding: 16,
-    alignItems: "center",
-    // backgroundColor: "#f0f8ff",
-    marginHorizontal: 16,
-    borderRadius: 8,
-  },
-  processingText: {
-    marginTop: 16,
-    textAlign: "center",
-  },
-  resultContainer: {
-    padding: 16,
-    // backgroundColor: "#e8f5e9",
-    marginHorizontal: 16,
-    borderRadius: 8,
-  },
-  resultTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    marginBottom: 8,
-  },
-  resultText: {
-    marginBottom: 4,
-  },
-});
+const makeStyle = ({ width }: { width: number }) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+    },
+    errorText: {
+      color: "#F44336",
+      margin: 16,
+    },
+    emptyStateContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      padding: 20,
+    },
+    emptyStateText: {
+      fontSize: 16,
+      textAlign: "center",
+      marginBottom: 20,
+    },
+    actionButtonsContainer: {
+      flexDirection: "row",
+      justifyContent: "center",
+      width: "100%",
+    },
+    actionButton: {
+      margin: 8,
+      minWidth: 150,
+    },
+    imagesContainer: {
+      flex: 1,
+      marginVertical: 16,
+    },
+    imagesHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingHorizontal: 16,
+      marginBottom: 8,
+    },
+    imagesTitle: {
+      fontSize: 16,
+      fontWeight: "bold",
+    },
+    imagesList: {
+      paddingHorizontal: 16,
+    },
+    imageItem: {
+      width: width / 2 - 8 * 3,
+    },
+    imageContainer: {
+      position: "relative",
+      height: 150,
+    },
+    image: {
+      width: "100%",
+      height: "100%",
+      borderTopLeftRadius: 8,
+      borderTopRightRadius: 8,
+    },
+    uploadingOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: "rgba(0, 0, 0, 0.5)",
+      justifyContent: "center",
+      alignItems: "center",
+      padding: 16,
+    },
+    uploadingText: {
+      color: "white",
+      marginBottom: 8,
+    },
+    completeOverlay: {
+      position: "absolute",
+      top: 8,
+      right: 8,
+      backgroundColor: "white",
+      borderRadius: 20,
+    },
+    buttonContainer: {
+      margin: 16,
+    },
+    mediaButtonsContainer: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      marginBottom: 16,
+    },
+    mediaButton: {
+      flex: 1,
+      marginHorizontal: 4,
+    },
+    uploadButton: {
+      marginBottom: 8,
+    },
+    outlineButton: {
+      marginBottom: 16,
+    },
+    processingContainer: {
+      padding: 16,
+      alignItems: "center",
+      marginHorizontal: 16,
+      borderRadius: 8,
+    },
+    processingText: {
+      marginTop: 16,
+      textAlign: "center",
+    },
+    resultContainer: {
+      padding: 16,
+      marginHorizontal: 16,
+      borderRadius: 8,
+    },
+    resultTitle: {
+      fontSize: 16,
+      fontWeight: "bold",
+      marginBottom: 8,
+    },
+    resultText: {
+      marginBottom: 4,
+    },
+  });
