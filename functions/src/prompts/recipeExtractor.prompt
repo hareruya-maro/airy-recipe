@@ -1,0 +1,83 @@
+---
+model: vertexai/gemini-2.0-flash
+config:
+  temperature: 0.2
+  maxOutputTokens: 2048
+input:
+  schema:
+    type: object
+    properties:
+      imageUrl:
+        type: string
+        format: uri
+        description: レシピ画像のURL
+output:
+  schema:
+    type: object
+    properties:
+      title:
+        type: string
+        description: レシピのタイトル
+      description:
+        type: string
+        description: レシピの簡単な説明（任意）
+      ingredients:
+        type: array
+        items:
+          type: object
+          properties:
+            name:
+              type: string
+              description: 材料の名前 (例: '薄力粉', '卵')
+            amount:
+              type: string
+              description: 材料の分量 (例: '100g', '大さじ2', '少々')
+          required: ["name", "amount"]
+        description: 材料のリスト。各材料には名前と分量を含める
+      steps:
+        type: array
+        items:
+          type: string
+        description: 調理手順のリスト。各ステップを文字列として配列に格納する
+      prepTime:
+        type: number
+        description: 準備時間（分単位、任意）
+      cookTime:
+        type: number
+        description: 調理時間（分単位、任意）
+      totalTime:
+        type: number
+        description: 調理と準備の合計時間（分単位、任意）
+      servings:
+        type: number
+        description: 何人前か（任意）
+      difficulty:
+        type: string
+        description: 難易度（'簡単'、'普通'、'やや難しい'、'難しい'など）
+      categories:
+        type: array
+        items:
+          type: string
+        description: レシピのカテゴリやタグ（例：'主菜'、'和食'など）
+    required: ["title", "ingredients", "steps"]
+    additionalProperties: false
+---
+{{media url=imageUrl}}
+
+あなたは料理本の写真からレシピ情報を抽出する専門AIです。この画像から可能な限り詳細なレシピ情報を抽出してください。
+
+以下の情報を抽出してください：
+- レシピのタイトル
+- 説明文（レシピの簡単な説明や特徴）
+- 材料リスト（名前と分量）
+- 調理手順
+- 準備時間（分単位）
+- 調理時間（分単位）
+- 完成までの合計時間（分単位）
+- 何人前か（人数）
+- 難易度（「簡単」「普通」「やや難しい」「難しい」など）
+- カテゴリ/タグ（「主菜」「副菜」「スープ」「デザート」などのカテゴリや、「和食」「洋食」「中華」などの料理ジャンル）
+
+抽出できない項目があれば、適切なデフォルト値や推測値を使用してください。材料と手順は特に重要です。
+時間や人数の項目は数値で返してください（例：「30分」ではなく30）。
+材料リストはできるだけ詳細に、名前と分量の両方を含めてください。

@@ -15,6 +15,10 @@ import * as logger from "firebase-functions/logger";
 import { onCall, onRequest } from "firebase-functions/v2/https";
 import { genkit } from "genkit";
 
+import { enableFirebaseTelemetry } from "@genkit-ai/firebase";
+
+enableFirebaseTelemetry();
+
 // レシピ画像処理機能をインポート
 import { processRecipeImage } from "./recipe-image-processor";
 

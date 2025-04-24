@@ -43,7 +43,7 @@ export default function SignInScreen() {
         />
         <ThemedText style={styles.title}>AIry Recipe</ThemedText>
         <ThemedText style={styles.subtitle}>
-          AIが提案するレシピアプリ
+          AIサポートするレシピアプリ
         </ThemedText>
       </View>
 

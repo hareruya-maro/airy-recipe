@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  RefreshControl,
   StyleSheet,
   TouchableOpacity,
   View,
@@ -16,11 +17,21 @@ export default function HomeScreen() {
   const navigation = useNavigation<any>();
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
 
   // コンポーネントのマウント時にFirestoreからレシピを取得
   useEffect(() => {
     fetchRecipes();
   }, [fetchRecipes]);
+
+  // 引っ張って更新する処理
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchRecipes();
+    setRefreshing(false);
+    setSnackbarMessage("レシピを更新しました");
+    setSnackbarVisible(true);
+  };
 
   // レシピカード選択時の処理
   const handleRecipeSelect = (recipe: Recipe) => {
@@ -100,6 +111,9 @@ export default function HomeScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.recipeList}
           style={{ flex: 1 }}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
         />
       )}
 
