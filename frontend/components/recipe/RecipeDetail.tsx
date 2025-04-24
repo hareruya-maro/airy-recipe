@@ -48,7 +48,7 @@ export const RecipeDetail: React.FC<RecipeDetailProps> = ({ recipe }) => {
     <>
       <Appbar.Header>
         <Appbar.Action icon="chevron-left" onPress={router.back} />
-        <Appbar.Content title="AIry Recipe" />
+        <Appbar.Content title={recipe.title} />
         {isEditable && <Appbar.Action icon="pencil" onPress={editRecipe} />}
       </Appbar.Header>
 
