@@ -22,8 +22,11 @@ enableFirebaseTelemetry();
 // レシピ画像処理機能をインポート
 import { processRecipeImage } from "./recipe-image-processor";
 
-// Firebase Adminの初期化
-admin.initializeApp({ databaseURL: "https://airy-recipe.firebaseio.com" });
+// Firebase Adminの初期化（storageBucketオプションを追加）
+admin.initializeApp({
+  databaseURL: "https://airy-recipe.firebaseio.com",
+  storageBucket: "airy-recipe.firebasestorage.app", // バケット名を指定
+});
 
 // Firestoreの参照を取得
 // const db = admin.firestore();

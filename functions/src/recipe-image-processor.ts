@@ -3,8 +3,12 @@ import cors from "cors";
 import * as admin from "firebase-admin";
 import * as logger from "firebase-functions/logger";
 import { onRequest } from "firebase-functions/v2/https";
+import * as fs from "fs";
 import { genkit } from "genkit";
+import fetch from "node-fetch";
+import * as os from "os";
 import * as path from "path";
+import sharp from "sharp";
 import { z } from "zod";
 
 // CORS設定
@@ -36,6 +40,17 @@ const IngredientSchema = z.object({
 });
 
 /**
+ * Zodスキーマ：料理写真領域の形式を定義
+ */
+const DishImageBoundsSchema = z.object({
+  hasImage: z.boolean().describe("料理写真が画像内に存在するかどうか"),
+  x: z.number().describe("料理写真の左上隅のX座標（相対値、0.0～1.0）"),
+  y: z.number().describe("料理写真の左上隅のY座標（相対値、0.0～1.0）"),
+  width: z.number().describe("料理写真の幅（相対値、0.0～1.0）"),
+  height: z.number().describe("料理写真の高さ（相対値、0.0～1.0）"),
+});
+
+/**
  * Zodスキーマ：レシピ情報の形式を定義
  */
 const RecipeSchema = z.object({
@@ -62,6 +77,7 @@ const RecipeSchema = z.object({
     .array(z.string())
     .optional()
     .describe("レシピのカテゴリやタグ（例：'主菜'、'和食'など）"),
+  dishImageBounds: DishImageBoundsSchema.describe("料理写真の境界ボックス情報"),
 });
 
 // 型定義
@@ -81,6 +97,87 @@ interface ExtractRecipeFlowOutput {
   imageUrl: string;
   success: boolean;
   error?: string;
+}
+
+/**
+ * 画像URLから料理写真の領域を抽出する関数
+ * @param imageUrl 元の画像URL
+ * @param dishImageBounds 料理写真の境界ボックス情報
+ * @returns 抽出された料理写真のStorageパス（または抽出失敗時はnull）
+ */
+async function extractDishImage(
+  imageUrl: string,
+  dishImageBounds: z.infer<typeof DishImageBoundsSchema>,
+  recipeId: string
+): Promise<string | null> {
+  // 料理写真が存在しない場合はnullを返す
+  if (!dishImageBounds.hasImage) {
+    logger.info("料理写真が見つかりませんでした");
+    return null;
+  }
+
+  try {
+    // 一時ファイルパスを生成
+    const tempLocalFile = path.join(os.tmpdir(), `original-${Date.now()}.jpg`);
+    const tempCroppedFile = path.join(os.tmpdir(), `cropped-${Date.now()}.jpg`);
+
+    // 画像をダウンロード
+    const response = await fetch(imageUrl);
+    if (!response.ok) {
+      throw new Error(
+        `画像のダウンロードに失敗しました: ${response.statusText}`
+      );
+    }
+
+    // 画像データをバッファに変換
+    const imageBuffer = await response.buffer();
+
+    // 一時ファイルに保存
+    fs.writeFileSync(tempLocalFile, imageBuffer);
+
+    // 画像メタデータを取得して実際のサイズを確認
+    const metadata = await sharp(tempLocalFile).metadata();
+    const imageWidth = metadata.width || 1;
+    const imageHeight = metadata.height || 1;
+
+    // 相対座標を絶対ピクセル座標に変換
+    const left = Math.round(dishImageBounds.x * imageWidth);
+    const top = Math.round(dishImageBounds.y * imageHeight);
+    const width = Math.round(dishImageBounds.width * imageWidth);
+    const height = Math.round(dishImageBounds.height * imageHeight);
+
+    // 画像を切り抜く
+    await sharp(tempLocalFile)
+      .extract({ left, top, width, height })
+      .toFile(tempCroppedFile);
+
+    // Storageにアップロード
+    const bucket = admin.storage().bucket();
+    const storagePath = `recipe-images/dish-${recipeId}.jpg`;
+
+    await bucket.upload(tempCroppedFile, {
+      destination: storagePath,
+      metadata: {
+        contentType: "image/jpeg",
+      },
+    });
+
+    // 一時ファイルを削除
+    fs.unlinkSync(tempLocalFile);
+    fs.unlinkSync(tempCroppedFile);
+
+    // 公開URLを生成して返す
+    const [url] = await bucket.file(storagePath).getSignedUrl({
+      action: "read",
+      expires: "03-01-2500", // 長期間有効
+    });
+
+    logger.info(`料理写真を正常に抽出し保存しました: ${storagePath}`);
+    return url;
+  } catch (error) {
+    logger.error("料理写真の抽出中にエラーが発生しました:", error);
+    return null;
+  }
 }
 
 /**
@@ -133,11 +230,11 @@ const extractRecipeFlow = ai.defineFlow(
         const recipeData = {
           title: recipeInfo.title || "タイトルなし",
           description: recipeInfo.description || "OCRで抽出されたレシピです。",
-          prepTime: recipeInfo.prepTime ?? 15,
-          cookTime: recipeInfo.cookTime ?? 30,
+          prepTime: recipeInfo.prepTime ?? 0,
+          cookTime: recipeInfo.cookTime ?? 0,
           totalTime:
             recipeInfo.totalTime ??
-            (recipeInfo.prepTime ?? 15) + (recipeInfo.cookTime ?? 30),
+            (recipeInfo.prepTime ?? 0) + (recipeInfo.cookTime ?? 0),
           servings: recipeInfo.servings ?? 2,
           difficulty: recipeInfo.difficulty ?? "普通",
           image: input.imageUrl,
@@ -156,6 +253,27 @@ const extractRecipeFlow = ai.defineFlow(
         // レシピのメインドキュメントを作成
         const recipeRef = await db.collection("recipes").add(recipeData);
         const recipeId = recipeRef.id;
+
+        // 料理写真が存在する場合は抽出して保存
+        let dishImageUrl = null;
+        if (recipeInfo.dishImageBounds && recipeInfo.dishImageBounds.hasImage) {
+          logger.info("料理写真の抽出を開始します");
+          dishImageUrl = await extractDishImage(
+            input.imageUrl,
+            recipeInfo.dishImageBounds,
+            recipeId
+          );
+
+          // 料理写真がうまく抽出できた場合、レシピのメイン画像として設定
+          if (dishImageUrl) {
+            await recipeRef.update({
+              dishImage: dishImageUrl,
+              // メイン画像も料理写真に置き換える（オプション）
+              image: dishImageUrl,
+            });
+            logger.info("レシピのメイン画像を料理写真に更新しました");
+          }
+        }
 
         // 材料サブコレクションの登録
         if (
@@ -220,22 +338,32 @@ const extractRecipeFlow = ai.defineFlow(
           userId,
           recipeId,
           imageUrl: input.imageUrl,
+          dishImageUrl,
           timestamp: admin.firestore.FieldValue.serverTimestamp(),
           result: {
             recipeId,
-            recipeData,
+            recipeData: {
+              ...recipeData,
+              dishImage: dishImageUrl,
+            },
             recipeInfo,
           },
         });
 
         logger.info("レシピ画像処理完了、レシピが登録されました", {
           recipeId,
+          hasDishImage: !!dishImageUrl,
         });
 
         // 成功結果を返す
+        const updatedRecipeData = {
+          ...recipeData,
+          dishImage: dishImageUrl,
+        };
+
         return {
           recipeId,
-          recipeData,
+          recipeData: updatedRecipeData,
           recipeInfo,
           imageUrl: input.imageUrl,
           success: true,
