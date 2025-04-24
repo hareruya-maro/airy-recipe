@@ -44,8 +44,8 @@ export const useImageUpload = () => {
       // react-native-image-crop-pickerを使ってカメラを起動
       const result = await ImagePicker.openCamera({
         cropping: true,
-        width,
-        height,
+        width: 1240,
+        height: 1754,
         includeBase64: false,
         mediaType: "photo",
         compressImageQuality: 0.8,
@@ -83,8 +83,8 @@ export const useImageUpload = () => {
       // react-native-image-crop-pickerを使ってギャラリーを開く
       const results = await ImagePicker.openPicker({
         multiple: true,
-        width,
-        height,
+        width: 1240,
+        height: 1754,
         mediaType: "photo",
         compressImageQuality: 0.8,
         freeStyleCropEnabled: true,
@@ -121,8 +121,8 @@ export const useImageUpload = () => {
       // react-native-image-crop-pickerを使って画像をトリミング
       const croppedImage = await ImagePicker.openCropper({
         mediaType: "photo",
-        width,
-        height,
+        width: 1240,
+        height: 1754,
         path: imageUri,
         freeStyleCropEnabled: true,
         cropperCircleOverlay: false,

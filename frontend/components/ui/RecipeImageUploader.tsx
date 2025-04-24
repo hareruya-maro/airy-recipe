@@ -32,7 +32,6 @@ export const RecipeImageUploader = ({
   onUploadComplete,
   onRecipeProcessed,
 }: RecipeImageUploaderProps) => {
-  const [menuVisible, setMenuVisible] = useState(false);
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [processingMode, setProcessingMode] = useState<"upload" | "process">(
@@ -61,19 +60,13 @@ export const RecipeImageUploader = ({
   const styles = makeStyle({ width });
   // スナックバーの表示
 
-  // メニューを開く・閉じる
-  const openMenu = () => setMenuVisible(true);
-  const closeMenu = () => setMenuVisible(false);
-
   // 写真を撮影
   const handleTakePicture = async () => {
-    closeMenu();
     await takePicture();
   };
 
   // ギャラリーから選択
   const handlePickImage = async () => {
-    closeMenu();
     await pickImage();
   };
 
