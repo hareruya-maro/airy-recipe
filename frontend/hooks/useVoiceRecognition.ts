@@ -330,8 +330,22 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
       lowerText.startsWith("エアリ") ||
       lowerText.startsWith("えあり");
 
+    // 「あり」で始まる場合の特別処理（「ありがとう」などの一般的な言葉は除外）
+    const startsWithAri = lowerText.startsWith("あり");
+    const isExcludedAriWord =
+      lowerText.startsWith("ありがとう") ||
+      lowerText.startsWith("ありました") ||
+      lowerText.startsWith("ありませ") ||
+      lowerText.startsWith("ありゃ") ||
+      lowerText.startsWith("ありゃしない") ||
+      lowerText.startsWith("ありえ");
+
+    // 通常のウェイクワードか、「あり」で始まり除外ワードでない場合にtrueに
+    const hasWakeWordFinal =
+      hasWakeWord || (startsWithAri && !isExcludedAriWord);
+
     // ウェイクワードがない場合は処理しない
-    if (!hasWakeWord) {
+    if (!hasWakeWordFinal) {
       console.log("ウェイクワードがないため処理をスキップ:", lowerText);
       restartVoiceRecognition();
       return;
@@ -339,7 +353,7 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
 
     // ウェイクワードを除去した実際のコマンド部分を抽出
     const commandText = lowerText
-      .replace(/^(アイリ|えり|エリ|あいり|エアリ|えあり)/, "")
+      .replace(/^(アイリ|えり|エリ|あいり|エアリ|えあり|あり)/, "")
       .trim();
     console.log("ウェイクワード検出、コマンド処理:", commandText);
 
