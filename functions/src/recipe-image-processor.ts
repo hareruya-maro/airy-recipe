@@ -153,7 +153,7 @@ async function extractDishImage(
 
     // Storageにアップロード
     const bucket = admin.storage().bucket();
-    const storagePath = `recipe-images/dish-${recipeId}.jpg`;
+    const storagePath = `recipe_images/dish-${recipeId}.jpg`;
 
     await bucket.upload(tempCroppedFile, {
       destination: storagePath,
