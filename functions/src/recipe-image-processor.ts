@@ -85,16 +85,16 @@ type Recipe = z.infer<typeof RecipeSchema>;
 
 // Firestoreへの登録に必要な入力情報の型定義
 interface ExtractRecipeFlowInput {
-  imageUrl: string;
+  imageUrls: string[]; // 変更: 複数の画像URLを配列で受け取る
   userId?: string;
 }
 
 // フローからの出力情報の型定義
 interface ExtractRecipeFlowOutput {
   recipeId?: string;
-  recipeData?: any;
   recipeInfo?: Recipe;
-  imageUrl: string;
+  imageUrls: string[]; // 変更: 処理した画像URLの配列を返す
+  primaryImageUrl?: string; // 追加: メインとなる画像URL
   success: boolean;
   error?: string;
 }
@@ -187,33 +187,50 @@ const extractRecipeFlow = ai.defineFlow(
   {
     name: "extractRecipeFlow",
     inputSchema: z.object({
-      imageUrl: z.string().url(),
+      imageUrls: z.array(z.string().url()), // 複数の画像URLを配列で受け取るよう変更
       userId: z.string().optional(),
     }),
     outputSchema: z.object({
       recipeId: z.string().optional(),
-      recipeData: z.any().optional(),
       recipeInfo: RecipeSchema.optional(),
-      imageUrl: z.string(),
+      imageUrls: z.array(z.string()), // 複数の画像URLを返すよう変更
+      primaryImageUrl: z.string().optional(), // メイン画像URL
       success: z.boolean(),
       error: z.string().optional(),
     }),
   },
   async (input: ExtractRecipeFlowInput): Promise<ExtractRecipeFlowOutput> => {
-    logger.info(`レシピ抽出フロー開始: ${input.imageUrl}`);
+    logger.info(`レシピ抽出フロー開始: ${input.imageUrls.length}枚の画像`);
     const userId = input.userId || "system";
 
+    if (input.imageUrls.length === 0) {
+      return {
+        imageUrls: [],
+        success: false,
+        error: "画像URLが提供されていません",
+      };
+    }
+
     try {
+      // 最初の画像からレシピの基本情報を抽出（メインの画像として扱う）
+      let primaryImageUrl = input.imageUrls[0];
+      logger.info(`メイン画像の処理: ${primaryImageUrl}`);
+
       // .promptファイルを読み込み
       const recipePrompt = ai.prompt("recipeExtractor");
 
       // プロンプトを実行して画像URLを入力として渡す
-      const { output } = await recipePrompt({ imageUrl: input.imageUrl });
+      // 複数画像に対応するため、配列で渡す
+      const { output } = await recipePrompt({
+        imageUrls: input.imageUrls,
+        imageUrl: primaryImageUrl, // 後方互換性のため残す
+      });
 
       if (!output) {
         logger.warn("モデルから有効な構造化出力が得られませんでした。");
         return {
-          imageUrl: input.imageUrl,
+          imageUrls: input.imageUrls,
+          primaryImageUrl,
           success: false,
           error: "画像からレシピ情報を抽出できませんでした",
         };
@@ -237,7 +254,7 @@ const extractRecipeFlow = ai.defineFlow(
             (recipeInfo.prepTime ?? 0) + (recipeInfo.cookTime ?? 0),
           servings: recipeInfo.servings ?? 2,
           difficulty: recipeInfo.difficulty ?? "普通",
-          image: input.imageUrl,
+          image: primaryImageUrl,
           tags: ["OCR抽出", ...(recipeInfo.categories ?? [])]
             .filter(Boolean)
             .slice(0, 10),
@@ -259,7 +276,7 @@ const extractRecipeFlow = ai.defineFlow(
         if (recipeInfo.dishImageBounds && recipeInfo.dishImageBounds.hasImage) {
           logger.info("料理写真の抽出を開始します");
           dishImageUrl = await extractDishImage(
-            input.imageUrl,
+            primaryImageUrl,
             recipeInfo.dishImageBounds,
             recipeId
           );
@@ -272,7 +289,28 @@ const extractRecipeFlow = ai.defineFlow(
               image: dishImageUrl,
             });
             logger.info("レシピのメイン画像を料理写真に更新しました");
+            primaryImageUrl = dishImageUrl; // メイン画像URL更新
           }
+        }
+
+        // すべての画像をレシピの補足画像として保存（最初の画像以外）
+        if (input.imageUrls.length > 1) {
+          const additionalImages = [];
+
+          for (let i = 1; i < input.imageUrls.length; i++) {
+            const additionalImageUrl = input.imageUrls[i];
+            additionalImages.push({
+              url: additionalImageUrl,
+              order: i,
+            });
+            logger.info(`追加画像を登録: ${additionalImageUrl}`);
+          }
+
+          // 追加画像を保存
+          await recipeRef.update({
+            additionalImages: additionalImages,
+          });
+          logger.info(`${additionalImages.length}枚の追加画像を登録しました`);
         }
 
         // 材料サブコレクションの登録
@@ -337,7 +375,7 @@ const extractRecipeFlow = ai.defineFlow(
         await db.collection("recipeProcessingLogs").add({
           userId,
           recipeId,
-          imageUrl: input.imageUrl,
+          imageUrls: input.imageUrls,
           dishImageUrl,
           timestamp: admin.firestore.FieldValue.serverTimestamp(),
           result: {
@@ -353,19 +391,14 @@ const extractRecipeFlow = ai.defineFlow(
         logger.info("レシピ画像処理完了、レシピが登録されました", {
           recipeId,
           hasDishImage: !!dishImageUrl,
+          totalImages: input.imageUrls.length,
         });
-
-        // 成功結果を返す
-        const updatedRecipeData = {
-          ...recipeData,
-          dishImage: dishImageUrl,
-        };
 
         return {
           recipeId,
-          recipeData: updatedRecipeData,
           recipeInfo,
-          imageUrl: input.imageUrl,
+          imageUrls: input.imageUrls,
+          primaryImageUrl: dishImageUrl || primaryImageUrl,
           success: true,
         };
       } catch (dbError) {
@@ -373,7 +406,8 @@ const extractRecipeFlow = ai.defineFlow(
         logger.error("レシピデータ保存中にエラーが発生しました:", dbError);
         return {
           recipeInfo,
-          imageUrl: input.imageUrl,
+          imageUrls: input.imageUrls,
+          primaryImageUrl: primaryImageUrl,
           success: false,
           error:
             dbError instanceof Error
@@ -385,7 +419,8 @@ const extractRecipeFlow = ai.defineFlow(
       // レシピ抽出中のエラー
       logger.error("レシピ抽出中にエラーが発生しました:", error);
       return {
-        imageUrl: input.imageUrl,
+        imageUrls: input.imageUrls,
+        primaryImageUrl: input.imageUrls[0],
         success: false,
         error:
           error instanceof Error ? error.message : "不明なエラーが発生しました",
@@ -407,18 +442,21 @@ export const processRecipeImage = onRequest((request, response) => {
       }
 
       // リクエストボディからデータを取得
-      const { imageUrl, userId } = request.body;
+      const { imageUrls, userId } = request.body;
 
-      if (!imageUrl) {
+      if (!imageUrls || !Array.isArray(imageUrls) || imageUrls.length === 0) {
         response.status(400).send({ error: "画像URLが提供されていません" });
         return;
       }
 
-      logger.info("レシピ画像処理開始", { imageUrl, userId });
+      logger.info("レシピ画像処理開始", {
+        imageCount: imageUrls.length,
+        userId,
+      });
 
       try {
         // Genkitフローを使用してレシピ情報を抽出してFirestoreに保存
-        const result = await extractRecipeFlow({ imageUrl, userId });
+        const result = await extractRecipeFlow({ imageUrls, userId });
 
         if (!result.success) {
           response.status(400).send({
@@ -433,9 +471,11 @@ export const processRecipeImage = onRequest((request, response) => {
           success: true,
           data: {
             recipeId: result.recipeId,
-            recipeData: result.recipeData,
             recipeInfo: result.recipeInfo,
-            imageUrl,
+            imageUrls: result.imageUrls,
+            primaryImageUrl: result.primaryImageUrl || result.imageUrls[0],
+            additionalImagesCount:
+              result.imageUrls.length > 1 ? result.imageUrls.length - 1 : 0,
           },
         });
       } catch (error) {

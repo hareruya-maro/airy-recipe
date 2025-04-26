@@ -7,10 +7,17 @@ input:
   schema:
     type: object
     properties:
+      imageUrls:
+        type: array
+        items:
+          type: string
+          format: uri
+        description: レシピ画像のURL配列
       imageUrl:
         type: string
         format: uri
-        description: レシピ画像のURL
+        description: レシピ画像のURL（後方互換性のため残す）
+    required: ["imageUrl"]
 output:
   schema:
     type: object
@@ -40,16 +47,16 @@ output:
           type: string
         description: 調理手順のリスト。各ステップを文字列として配列に格納する
       prepTime:
-        type: number
+        type: ["number", "null"]
         description: 準備時間（分単位、任意）
       cookTime:
-        type: number
+        type: ["number", "null"]
         description: 調理時間（分単位、任意）
       totalTime:
-        type: number
+        type: ["number", "null"]
         description: 調理と準備の合計時間（分単位、任意）
       servings:
-        type: number
+        type: ["number", "null"]
         description: 何人前か（任意）
       difficulty:
         type: string
@@ -66,23 +73,29 @@ output:
             type: boolean
             description: 料理写真が画像内に存在するかどうか
           x:
-            type: number
+            type: ["number", "null"]
             description: 料理写真の左上隅のX座標（画像の幅に対する相対値、0.0～1.0）
           y:
-            type: number
+            type: ["number", "null"]
             description: 料理写真の左上隅のY座標（画像の高さに対する相対値、0.0～1.0）
           width:
-            type: number
+            type: ["number", "null"]
             description: 料理写真の幅（画像の幅に対する相対値、0.0～1.0）
           height:
-            type: number
+            type: ["number", "null"]
             description: 料理写真の高さ（画像の高さに対する相対値、0.0～1.0）
         description: 料理の完成写真の領域を表す境界ボックス。座標は画像の左上を原点(0,0)として、相対値(0.0～1.0)で表現
         required: ["hasImage", "x", "y", "width", "height"]
     required: ["title", "ingredients", "steps", "dishImageBounds"]
     additionalProperties: false
 ---
+{{#if imageUrls}}
+{{#each imageUrls}}
+{{media url=this}}
+{{/each}}
+{{else}}
 {{media url=imageUrl}}
+{{/if}}
 
 あなたは料理本の写真からレシピ情報を抽出する専門AIです。この画像から可能な限り詳細なレシピ情報を抽出してください。
 
@@ -103,6 +116,8 @@ output:
 - 料理写真の位置（x, y）と大きさ（width, height）を画像の左上を原点(0,0)として相対値(0.0～1.0)で表現
 
 抽出できない項目があれば、適切なデフォルト値や推測値を使用してください。材料と手順は特に重要です。
-時間や人数の項目は数値で返してください（例：「30分」ではなく30）。
+時間や人数の項目は**必ず数値で**返してください（例：「30分」ではなく30）。
+時間や人数の項目が取得できなかった場合は0を返してください。
 材料リストはできるだけ詳細に、名前と分量の両方を含めてください。
+材料の分量はできるだけ具体的に記載してください（例：'100g', '大さじ2', '少々', '大さじ２と1/2'など）。
 料理写真が画像内に見つからない場合は、hasImageをfalseに設定してください。

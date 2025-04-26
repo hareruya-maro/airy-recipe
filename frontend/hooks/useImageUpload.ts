@@ -23,9 +23,12 @@ export type RecipeProcessingResult = {
   recipeId: string;
   recipeData: any;
   recipeInfo: any;
-  foodImages: any[];
-  rawText: string;
-  imageUrl: string;
+  imageUrls: string[];
+  primaryImageUrl: string;
+  additionalImagesCount: number;
+  foodImages?: any[];
+  rawText?: string;
+  imageUrl?: string;
 };
 
 export const useImageUpload = () => {
@@ -231,9 +234,6 @@ export const useImageUpload = () => {
       // 処理を開始
       setIsProcessing(true);
 
-      // 最初の画像を処理対象とする
-      const imageUrl = uploadResult.urls[0];
-
       // 現在のユーザーIDを取得
       const userId = auth.currentUser?.uid || "anonymous";
 
@@ -243,14 +243,14 @@ export const useImageUpload = () => {
       const projectId = "airy-recipe"; // firebase.tsのプロジェクトIDと一致させる
       const functionUrl = `https://${region}-${projectId}.cloudfunctions.net/processRecipeImage`;
 
-      // HTTP POSTリクエストを送信
+      // HTTP POSTリクエストを送信（複数画像に対応）
       const response = await fetch(functionUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          imageUrl,
+          imageUrls: uploadResult.urls, // 複数画像URLを配列で送信
           userId,
         }),
       });

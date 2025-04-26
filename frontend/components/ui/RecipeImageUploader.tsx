@@ -188,8 +188,9 @@ export const RecipeImageUploader = ({
       {images.length === 0 && (
         <View style={styles.emptyStateContainer}>
           <Text style={styles.emptyStateText}>
-            画像を追加してください。下のボタンから写真を撮影するか、
-            ギャラリーから選択できます。
+            レシピの画像を追加してください。
+            複数枚の画像をアップロードして1つのレシピとして処理することができます。
+            下のボタンから写真を撮影するか、ギャラリーから選択できます。
           </Text>
 
           <View style={styles.actionButtonsContainer}>
@@ -300,17 +301,25 @@ export const RecipeImageUploader = ({
             <View style={styles.resultContainer}>
               <Text style={styles.resultTitle}>レシピ解析結果:</Text>
               <Text style={styles.resultText}>
-                タイトル: {recipeResult.recipeData.title}
+                タイトル: {recipeResult.recipeInfo.title}
               </Text>
-              {recipeResult.recipeData.description && (
+              {recipeResult.recipeInfo.description && (
                 <Text style={styles.resultText} numberOfLines={2}>
-                  説明: {recipeResult.recipeData.description}
+                  説明: {recipeResult.recipeInfo.description}
                 </Text>
               )}
               <Text style={styles.resultText}>
-                調理時間: {recipeResult.recipeData.cookTime}分 / 難易度:{" "}
-                {recipeResult.recipeData.difficulty}
+                調理時間: {recipeResult.recipeInfo.cookTime}分 / 難易度:{" "}
+                {recipeResult.recipeInfo.difficulty}
               </Text>
+              {/* {recipeResult.additionalImagesCount > 0 && (
+                <Text style={styles.resultText}>
+                  {recipeResult.recipeInfo.images &&
+                  recipeResult.recipeInfo.images.length > 1
+                    ? `追加画像: ${recipeResult.recipeInfo.images.length - 1}枚`
+                    : ""}
+                </Text>
+              )} */}
             </View>
           )}
         </View>

@@ -22,7 +22,7 @@ export default function ImageUploadScreen() {
     if (recipeResult && recipeResult.recipeId) {
       // 少し待ってから詳細画面に遷移
       setTimeout(() => {
-        router.push(`/(drawer)/(home)/detail?id=${recipeResult.recipeId}`);
+        router.replace(`/(drawer)/(home)/detail?id=${recipeResult.recipeId}`);
       }, 1000);
     }
   };

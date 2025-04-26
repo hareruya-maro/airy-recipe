@@ -11,6 +11,41 @@ import {
 import { Appbar, Card, Portal, Snackbar, Text } from "react-native-paper";
 import { Recipe, useRecipeStore } from "../../../store/recipeStore";
 
+// FirestoreのTimestampを日付文字列に変換する関数
+const formatDate = (timestamp: any): string => {
+  if (!timestamp) return "日付なし";
+
+  try {
+    // Firestoreのタイムスタンプの場合
+    if (timestamp.toDate) {
+      const date = timestamp.toDate();
+      return date.toLocaleDateString("ja-JP", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    }
+
+    // JavaScriptのDate型の場合
+    if (timestamp instanceof Date) {
+      return timestamp.toLocaleDateString("ja-JP", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    }
+
+    return "日付なし";
+  } catch (err) {
+    console.error("日付変換エラー:", err);
+    return "日付なし";
+  }
+};
+
 export default function HomeScreen() {
   const { recipes, fetchRecipes, isLoadingRecipes } = useRecipeStore();
   const router = useRouter();
@@ -72,6 +107,9 @@ export default function HomeScreen() {
               難易度: {item.difficulty}
             </Text>
           </View>
+          <Text variant="bodySmall" style={styles.dateText}>
+            登録日時: {formatDate(item.createdAt)}
+          </Text>
         </Card.Content>
       </Card>
     </TouchableOpacity>
@@ -176,6 +214,11 @@ const styles = StyleSheet.create({
   },
   metaItem: {
     marginRight: 16,
+    opacity: 0.6,
+  },
+  dateText: {
+    marginTop: 8,
+    fontSize: 12,
     opacity: 0.6,
   },
   loadingContainer: {

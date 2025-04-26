@@ -40,6 +40,7 @@ export type Recipe = {
   createdBy?: string;
   isSystemRecipe?: boolean;
   isPublic?: boolean;
+  createdAt?: any; // Firestoreのタイムスタンプ
 };
 
 type RecipeState = {
@@ -118,6 +119,7 @@ const convertFirestoreRecipe = (
     createdBy: firestoreRecipe.createdBy,
     isSystemRecipe: firestoreRecipe.isSystemRecipe,
     isPublic: firestoreRecipe.isPublic,
+    createdAt: firestoreRecipe.createdAt, // createdAtを追加
   };
 };
 
@@ -145,32 +147,34 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
         : [];
 
       // Firestoreのレシピを簡易版のRecipeオブジェクトに変換
-      const recipes = firestoreRecipes.map(
-        (recipe) =>
-          ({
-            id: recipe.id,
-            title: recipe.title,
-            description: recipe.description,
-            prepTime:
-              typeof recipe.prepTime === "number"
-                ? `${recipe.prepTime}分`
-                : recipe.prepTime,
-            cookTime:
-              typeof recipe.cookTime === "number"
-                ? `${recipe.cookTime}分`
-                : recipe.cookTime,
-            servings: recipe.servings,
-            difficulty: recipe.difficulty,
-            image: recipe.image || "",
-            ingredients: [], // 詳細取得時に設定
-            steps: [], // 詳細取得時に設定
-            tips: [], // 詳細取得時に設定（現在未サポート）
-            tags: recipe.tags || [],
-            createdBy: recipe.createdBy,
-            isSystemRecipe: recipe.isSystemRecipe,
-            isPublic: recipe.isPublic,
-          } as Recipe)
-      );
+      const recipes = firestoreRecipes
+        .map(
+          (recipe) =>
+            ({
+              id: recipe.id,
+              title: recipe.title,
+              description: recipe.description,
+              prepTime: `${recipe.prepTime}`,
+              cookTime: `${recipe.cookTime}`,
+              servings: recipe.servings,
+              difficulty: recipe.difficulty,
+              image: recipe.image || "",
+              ingredients: [], // 詳細取得時に設定
+              steps: [], // 詳細取得時に設定
+              tips: [], // 詳細取得時に設定（現在未サポート）
+              tags: recipe.tags || [],
+              createdBy: recipe.createdBy,
+              isSystemRecipe: recipe.isSystemRecipe,
+              isPublic: recipe.isPublic,
+              createdAt: recipe.createdAt, // createdAtを追加
+            } as Recipe)
+        )
+        // createdAtの降順でソート（新しい順）
+        .sort((a, b) => {
+          if (!a.createdAt) return 1;
+          if (!b.createdAt) return -1;
+          return b.createdAt.seconds - a.createdAt.seconds;
+        });
 
       set({ recipes, isLoadingRecipes: false });
     } catch (error) {
