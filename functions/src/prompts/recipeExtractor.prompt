@@ -35,12 +35,12 @@ output:
           properties:
             name:
               type: string
-              description: 材料の名前 (例: '薄力粉', '卵')
+              description: "材料の名前 (例: '薄力粉', '卵')"
             amount:
               type: string
-              description: 材料の分量 (例: '100g', '大さじ2', '少々')
+              description: "材料の分量 (例: '100g', '大さじ2', '少々')"
           required: ["name", "amount"]
-        description: 材料のリスト。各材料には名前と分量を含める
+        description: "材料のリスト。各材料には名前と分量を含める"
       steps:
         type: array
         items:

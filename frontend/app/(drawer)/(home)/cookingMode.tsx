@@ -10,6 +10,7 @@ import {
   Portal,
   Surface,
   Text,
+  useTheme,
 } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { IngredientsList } from "../../../components/recipe/IngredientsList";
@@ -20,6 +21,7 @@ import {
   FlowingGradientRef,
 } from "../../../components/ui/FlowingGradient";
 import PulsingDialog from "../../../components/ui/PulsingDialog";
+import TextInputModal from "../../../components/ui/TextInputModal";
 import { useTimer } from "../../../hooks/useTimer";
 import { useVoiceRecognition } from "../../../hooks/useVoiceRecognition";
 import {
@@ -62,6 +64,7 @@ export default function CookingModeScreen() {
   const flatListRef = useRef<FlatList>(null);
 
   const { bottom } = useSafeAreaInsets();
+  const { colors } = useTheme();
 
   // タイマー機能のhook
   const {
@@ -70,6 +73,26 @@ export default function CookingModeScreen() {
     isDialogVisible: isTimerDialogVisible,
     showManualTimerDialogVisible,
   } = useTimer();
+
+  // テキスト入力モーダルの状態
+  const [isTextInputModalVisible, setTextInputModalVisible] = useState(false);
+
+  // テキスト入力モーダルの表示切替
+  const toggleTextInputModal = () => {
+    setTextInputModalVisible(!isTextInputModalVisible);
+  };
+
+  // テキスト入力モーダルからのテキスト提出処理
+  const handleTextInputSubmit = (text: string) => {
+    // モーダルを閉じる
+    setTextInputModalVisible(false);
+
+    // テキストを音声認識結果として処理
+    if (text.trim()) {
+      // 音声認識の処理を使用してテキストを処理
+      processManualTextInput(text);
+    }
+  };
 
   // 料理モード中はスリープを防止するためのkeep awake機能
   useEffect(() => {
@@ -147,6 +170,7 @@ export default function CookingModeScreen() {
     isSpeaking,
     startVoiceRecognition,
     stopVoiceRecognition,
+    processManualTextInput, // 手動テキスト入力処理関数を取得
   } = useVoiceRecognition({
     onShowIngredients: (isShow: boolean) => handleToggleIngredients(isShow), // 材料表示
     onVoiceRecognitionResult: handleVoiceRecognitionResult, // 音声認識結果ハンドラー（タイマー処理含む）
@@ -364,9 +388,11 @@ export default function CookingModeScreen() {
           <Button
             mode={isListening ? "contained" : "contained-tonal"}
             onPress={toggleVoiceRecognition}
+            onLongPress={toggleTextInputModal} // 長押しでテキスト入力モーダルを表示
             style={[styles.actionButton, isListening && styles.listeningButton]}
             icon={isListening ? "ear-hearing" : "microphone"}
             contentStyle={styles.actionButtonContent}
+            delayLongPress={500} // 長押し認識の遅延時間（ミリ秒）
           >
             {isListening ? "聞いています..." : "音声操作"}
           </Button>
@@ -392,6 +418,17 @@ export default function CookingModeScreen() {
             {showIngredients ? "手順" : "材料"}
           </Button>
         </View>
+
+        {/* テキスト入力モーダル */}
+        <TextInputModal
+          visible={isTextInputModalVisible}
+          onDismiss={() => setTextInputModalVisible(false)}
+          onSubmit={handleTextInputSubmit}
+          title="音声コマンドをテスト"
+          placeholder="ウェイクワード（アイリ等）から始めるコマンドを入力してください"
+          submitLabel="送信"
+          cancelLabel="キャンセル"
+        />
       </View>
     </Portal.Host>
   );
@@ -455,7 +492,6 @@ const styles = StyleSheet.create({
   // 下部ボタン配置用のコンテナ
   buttonsContainer: {
     position: "absolute",
-    bottom: 0,
     left: 8,
     right: 8,
     flexDirection: "row",
@@ -480,7 +516,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "bold",
     marginBottom: 8,
-    color: "#fff",
   },
   conversationList: {
     maxHeight: 200, // 会話履歴の最大高さを設定
@@ -504,6 +539,5 @@ const styles = StyleSheet.create({
   messageText: {
     fontSize: 16,
     marginTop: 4,
-    color: "#fff",
   },
 });

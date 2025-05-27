@@ -7,42 +7,83 @@
  * See a full list of supported triggers at https://firebase.google.com/docs/functions
  */
 
-import { gemini20Flash, googleAI } from "@genkit-ai/googleai";
-import { Content, VertexAI } from "@google-cloud/vertexai";
-import cors from "cors";
+import { gemini25FlashPreview0417, googleAI } from "@genkit-ai/googleai";
 import * as admin from "firebase-admin";
+import { DocumentReference, getFirestore } from "firebase-admin/firestore";
 import * as logger from "firebase-functions/logger";
-import { onCall, onRequest } from "firebase-functions/v2/https";
+import { onDocumentWritten } from "firebase-functions/v2/firestore";
+import { onCall } from "firebase-functions/v2/https";
 import { genkit } from "genkit";
 
-import { enableFirebaseTelemetry } from "@genkit-ai/firebase";
+import {
+  defineFirestoreRetriever,
+  enableFirebaseTelemetry,
+} from "@genkit-ai/firebase";
 
 enableFirebaseTelemetry();
 
 // レシピ画像処理機能をインポート
+import { textEmbedding004, vertexAI as vai } from "@genkit-ai/vertexai";
 import { processRecipeImage } from "./recipe-image-processor";
 
 // Firebase Adminの初期化（storageBucketオプションを追加）
-admin.initializeApp({
+const app = admin.initializeApp({
+  projectId: "airy-recipe",
   databaseURL: "https://airy-recipe.firebaseio.com",
   storageBucket: "airy-recipe.firebasestorage.app", // バケット名を指定
 });
 
-// Firestoreの参照を取得
-// const db = admin.firestore();
+let firestore = getFirestore(app);
+
+if (process.env.GCLOUD_SERVICE_ACCOUNT_CREDS) {
+  const serviceAccountCreds = JSON.parse(
+    process.env.GCLOUD_SERVICE_ACCOUNT_CREDS
+  );
+  const authOptions = { credentials: serviceAccountCreds };
+  firestore.settings(authOptions);
+}
 
 // configure a Genkit instance
 const ai = genkit({
-  plugins: [googleAI()],
-  model: gemini20Flash, // set default model
+  plugins: [googleAI(), vai()],
+  model: gemini25FlashPreview0417, // set default model
 });
-// CORS設定
-const corsHandler = cors({ origin: true });
 
-// Vertex AI初期化
-const PROJECT_ID = "airy-recipe"; // GCPプロジェクトIDを設定してください
-const LOCATION = "us-central1"; // リージョンを設定
-const MODEL_ID = "gemini-2.0-flash"; // 使用するモデルID
+const cookingTipsRetriever = defineFirestoreRetriever(ai, {
+  name: "cookingTipsRetriever",
+  firestore,
+  collection: "cookingTips",
+  contentField: (snap) => {
+    return [
+      {
+        text: JSON.stringify({
+          title: snap.get("name"),
+          description: snap.get("description"),
+          videoUrl: snap.get("media")[0].url,
+        }),
+      },
+    ];
+  }, // Field containing document content
+  vectorField: "embedding", // Field containing vector embeddings
+  embedder: textEmbedding004, // Embedder to generate embeddings
+  distanceMeasure: "DOT_PRODUCT", // Default is 'COSINE'; other options: 'EUCLIDEAN', 'DOT_PRODUCT'
+  metadataFields(snap) {
+    return {
+      name: snap.get("name"),
+      description: snap.get("description"),
+      url: snap.get("media")[0].url,
+      imageUrl: snap.get("media")[0].thumbnailUrl,
+    };
+  },
+});
+
+// const CookingTipsSchema = ai.defineSchema(
+//   "CookingTipsSchema",
+//   z.object({
+//     text: z.string(),
+//     url: z.string(),
+//   })
+// );
 
 // レシピアシスタントの基本プロンプト（システムプロンプト）
 const RECIPE_ASSISTANT_PROMPT = `
@@ -56,20 +97,17 @@ const RECIPE_ASSISTANT_PROMPT = `
 3. 現在表示されているレシピのコンテキストを考慮して回答してください
 4. 必要な情報がない場合は、料理の一般的な知識に基づいて回答してください
 5. 回答は明確で、調理中のユーザーにとって役立つものにしてください
-6. 回答は100文字以内で簡潔にまとめてください
+6. 回答は200文字以内で簡潔にまとめてください
+7. 提供したコンテキスト情報を優先的に使用してください
+8. 提供されたリトリーバーの取得結果（docs）を最優先で参照してください
+9. リトリーバーの取得結果にユーザーの質問に対する明確な答えが含まれている場合は、その情報を優先して回答として提示してください。関連情報の場合は、それを活用して回答を生成してください。
+10. リトリーバーの結果にURLやイメージURLがある場合は、関連性が高ければ回答の最後に追加してください
+11. 提供したコンテキストに該当する情報があり、タイトルやURLがある場合は、出力にタイトルやURLを含めてください
 
 回答はユーザーが調理中に聞くことを想定して、簡潔で明確にしてください。
+また、リトリーバーから提供された情報がある場合、それを優先して使用し、より具体的かつ正確な回答を心がけてください。
+URLが提供されている場合は、ユーザーが参照できるように回答の最後に追加してください。
 `;
-
-// Vertex AI クライアントの初期化
-const vertexAI = new VertexAI({ project: PROJECT_ID, location: LOCATION });
-const generativeModel = vertexAI.getGenerativeModel({
-  model: MODEL_ID,
-  systemInstruction: {
-    role: "system",
-    parts: [{ text: RECIPE_ASSISTANT_PROMPT }],
-  },
-});
 
 /**
  * 音声コマンドをLLMに送信して応答を得る関数
@@ -82,56 +120,40 @@ export const processVoiceCommand = onCall(
   async (request) => {
     try {
       // リクエストデータの取得
-      const { text, recipeContext } = request.data;
+      const { text: input, recipeContext } = request.data;
 
-      console.log("LLM処理開始:", { text, recipeContext });
-
-      if (!text) {
+      if (!input) {
         throw new Error("テキストが提供されていません");
       }
 
-      logger.info("音声コマンド処理リクエスト", { text, recipeContext });
+      logger.info("音声コマンド処理リクエスト", { text: input, recipeContext });
 
       // レシピのコンテキスト情報を準備
       const contextInfo = recipeContext
         ? `現在表示中のレシピ情報: ${JSON.stringify(recipeContext)}`
         : "特定のレシピのコンテキストはありません";
 
-      // LLMに送信するメッセージの準備
-      const messages: Content[] = [
-        {
-          role: "user",
-          parts: [{ text: `${contextInfo}\n\nユーザーの質問: ${text}` }],
-        },
-      ];
-
-      // 生成AIモデルに問い合わせ
-      const result = await generativeModel.generateContent({
-        contents: messages,
-        generationConfig: {
-          maxOutputTokens: 1024,
-          temperature: 0.2,
-          topP: 0.8,
-          topK: 40,
-        },
+      // リトリーバーを使ってベクターストアを参照
+      const docs = await ai.retrieve({
+        retriever: cookingTipsRetriever,
+        query: input,
+        options: { limit: 50 },
       });
 
-      const { text: testResult } = await ai.generate(
-        RECIPE_ASSISTANT_PROMPT + `${contextInfo}\n\nユーザーの質問: ${text}`
-      );
-
-      console.log("LLM応答:", testResult);
-
-      // レスポンスを取得
-      const response = result.response;
-      const aiResponse = response.candidates?.[0].content.parts[0].text;
-
-      logger.info("LLM応答生成完了", { aiResponse });
+      // リトリーバーからの参照結果をLLMに渡して回答を生成する
+      const llmResult = await ai.generate({
+        prompt:
+          RECIPE_ASSISTANT_PROMPT +
+          `${contextInfo}\n\nユーザーの質問: ${input}`,
+        docs,
+        model: gemini25FlashPreview0417,
+      });
 
       // 応答を返す
       return {
         success: true,
-        response: aiResponse,
+        response: llmResult.text,
+        cookingTips: llmResult.data,
       };
     } catch (error) {
       // エラー処理
@@ -145,69 +167,52 @@ export const processVoiceCommand = onCall(
   }
 );
 
-/**
- * HTTP経由でLLMにアクセスするためのエンドポイント
- * （フロントエンド開発中のテスト用）
- */
-export const llmApi = onRequest((request, response) => {
-  corsHandler(request, response, async () => {
-    try {
-      // POSTリクエストのみ受け付ける
-      if (request.method !== "POST") {
-        response.status(405).send("Method Not Allowed");
-        return;
-      }
-
-      // リクエストボディからデータを取得
-      const { text, recipeContext } = request.body;
-
-      if (!text) {
-        response.status(400).send({ error: "テキストが提供されていません" });
-        return;
-      }
-
-      // レシピのコンテキスト情報を準備
-      const contextInfo = recipeContext
-        ? `現在表示中のレシピ情報: ${JSON.stringify(recipeContext)}`
-        : "特定のレシピのコンテキストはありません";
-
-      // LLMに送信するメッセージの準備
-      const messages: Content[] = [
-        { role: "system", parts: [{ text: RECIPE_ASSISTANT_PROMPT }] },
-        {
-          role: "user",
-          parts: [{ text: `${contextInfo}\n\nユーザーの質問: ${text}` }],
-        },
-      ];
-
-      // 生成AIモデルに問い合わせ
-      const result = await generativeModel.generateContent({
-        contents: messages,
-        generationConfig: {
-          maxOutputTokens: 1024,
-          temperature: 0.2,
-          topP: 0.8,
-          topK: 40,
-        },
-      });
-
-      // レスポンスを取得
-      const response_text =
-        result.response.candidates?.[0].content.parts[0].text;
-
-      // 応答を返す
-      response.status(200).send({ success: true, response: response_text });
-    } catch (error) {
-      // エラー処理
-      logger.error("LLM APIエラー", error);
-      response.status(500).send({
-        success: false,
-        error:
-          error instanceof Error ? error.message : "不明なエラーが発生しました",
-      });
-    }
-  });
-});
-
 // レシピ画像処理関数をエクスポート
 export { processRecipeImage };
+
+import { FieldValue } from "firebase-admin/firestore";
+
+// Change these values to match your Firestore config/schema
+const indexConfig = {
+  collection: "cookingTips",
+  contentField: "text",
+  vectorField: "embedding",
+  embedder: textEmbedding004,
+};
+
+async function indexToFirestore(
+  docRef: DocumentReference,
+  name: string,
+  description: string
+) {
+  const [embeddingName] = await Promise.all([
+    ai.embed({
+      embedder: indexConfig.embedder,
+      content: name + "\n" + description,
+    }),
+  ]).then(([embeddingResult]) => [embeddingResult[0].embedding]);
+  await docRef.update({
+    [indexConfig.vectorField]: FieldValue.vector(embeddingName),
+  });
+}
+
+export const embedder = onDocumentWritten(
+  {
+    document: "cookingTips/{documentId}",
+    secrets: ["GEMINI_API_KEY"],
+    timeoutSeconds: 300,
+    memory: "1GiB",
+  },
+  async (event) => {
+    // event.data.after: 新しいドキュメントデータ
+    // event.data.before: 以前のドキュメントデータ
+    const afterData = event.data?.after?.data();
+    if (!afterData) return;
+
+    await indexToFirestore(
+      firestore.doc("cookingTips/" + event.params.documentId),
+      afterData.name,
+      afterData.description
+    );
+  }
+);

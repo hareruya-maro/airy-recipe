@@ -4,7 +4,7 @@ import Voice, {
 } from "@react-native-voice/voice";
 import * as Speech from "expo-speech"; // TTSのためのexpo-speechをインポート
 import { httpsCallable } from "firebase/functions";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { functions } from "../config/firebase";
 import { useRecipeStore } from "../store/recipeStore";
 
@@ -12,6 +12,7 @@ import { useRecipeStore } from "../store/recipeStore";
 type VoiceCallbacks = {
   onShowIngredients?: (isShow: boolean) => void; // 材料表示用コールバック
   onVoiceRecognitionResult?: (text: string) => boolean; // 音声認識結果処理用コールバック（返り値はコマンドが処理されたかどうか）
+  onManualTextInput?: () => void; // 手動テキスト入力を要求するコールバック
 };
 
 export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
@@ -194,7 +195,7 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
         debounceTimerRef.current = null;
       }
 
-      await Voice.start("ja-JP"); // 日本語で音声認識
+      await Voice.start("ja-JP", {}); // 日本語で音声認識
       setVoiceListening(true);
     } catch (e) {
       console.error(e);
@@ -223,6 +224,22 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
       setError("音声認識の再起動に失敗しました");
     }
   };
+
+  // 手動テキスト入力を処理する関数（音声認識と同じ処理を行う）
+  const processManualTextInput = useCallback((text: string) => {
+    if (!text.trim()) return;
+
+    console.log("手動テキスト入力:", text);
+
+    // 認識テキストとして表示
+    setRecognizedText(text);
+
+    // 現在の認識テキストを更新
+    currentTextRef.current = text;
+
+    // コマンド処理を実行
+    processVoiceCommand(text);
+  }, []);
 
   // Firebase FunctionsでLLMを使ってコマンド処理を行う関数
   const processWithLLM = async (text: string) => {
@@ -351,19 +368,35 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
       return;
     }
 
-    // ウェイクワードを除去した実際のコマンド部分を抽出
+    // ウェイクワードを見つけた場合は「AIry」に置き換えて実際のコマンド部分を抽出
+    let detectedWakeWord = "";
+    if (lowerText.startsWith("アイリ")) detectedWakeWord = "アイリ";
+    else if (lowerText.startsWith("あいり")) detectedWakeWord = "あいり";
+    else if (lowerText.startsWith("エリ")) detectedWakeWord = "エリ";
+    else if (lowerText.startsWith("えり")) detectedWakeWord = "えり";
+    else if (lowerText.startsWith("エアリ")) detectedWakeWord = "エアリ";
+    else if (lowerText.startsWith("えあり")) detectedWakeWord = "えあり";
+    else if (startsWithAri && !isExcludedAriWord) detectedWakeWord = "あり";
+
+    // 元のテキストからウェイクワードを「AIry」に置き換え
+    const processedText = detectedWakeWord
+      ? text.replace(new RegExp(`^${detectedWakeWord}`), "AIry")
+      : text;
+
+    // 「AIry」の後のコマンド部分を抽出
     const commandText = lowerText
       .replace(/^(アイリ|えり|エリ|あいり|エアリ|えあり|あり)/, "")
       .trim();
-    console.log("ウェイクワード検出、コマンド処理:", commandText);
+    console.log("ウェイクワード検出、処理後のテキスト:", processedText);
+    console.log("コマンド処理:", commandText);
 
     // コマンドが空の場合は標準応答
     if (!commandText) {
       const responseMessage = "はい、何をお手伝いしましょうか？";
       setLastAIResponse(responseMessage);
 
-      // 会話履歴に追加
-      addConversationMessage(text, true); // ユーザーの発話
+      // 会話履歴に追加（ウェイクワードが置き換えられた形で追加）
+      addConversationMessage(processedText, true); // ウェイクワードが「AIry」に置換されたユーザーの発話
       addConversationMessage(responseMessage, false); // システムの応答
 
       speakResponse(responseMessage);
@@ -381,8 +414,8 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
       const responseMessage = "次のステップに進みます";
       setLastAIResponse(responseMessage);
 
-      // 会話履歴に追加
-      addConversationMessage(text, true); // ユーザーの指示
+      // 会話履歴に追加（ウェイクワードが置き換えられた形で追加）
+      addConversationMessage(processedText, true); // ウェイクワードが「AIry」に置換されたユーザーの指示
       addConversationMessage(responseMessage, false); // システムの応答
 
       speakResponse(responseMessage); // TTSで応答を読み上げ
@@ -398,8 +431,8 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
       const responseMessage = "前のステップに戻ります";
       setLastAIResponse(responseMessage);
 
-      // 会話履歴に追加
-      addConversationMessage(text, true); // ユーザーの指示
+      // 会話履歴に追加（ウェイクワードが置き換えられた形で追加）
+      addConversationMessage(processedText, true); // ウェイクワードが「AIry」に置換されたユーザーの指示
       addConversationMessage(responseMessage, false); // システムの応答
 
       speakResponse(responseMessage); // TTSで応答を読み上げ
@@ -414,8 +447,8 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
       const responseMessage = "材料リストを表示します";
       setLastAIResponse(responseMessage);
 
-      // 会話履歴に追加
-      addConversationMessage(text, true); // ユーザーの指示
+      // 会話履歴に追加（ウェイクワードが置き換えられた形で追加）
+      addConversationMessage(processedText, true); // ウェイクワードが「AIry」に置換されたユーザーの指示
       addConversationMessage(responseMessage, false); // システムの応答
 
       speakResponse(responseMessage); // TTSで応答を読み上げ
@@ -435,8 +468,8 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
       const responseMessage = "手順リストを表示します";
       setLastAIResponse(responseMessage);
 
-      // 会話履歴に追加
-      addConversationMessage(text, true); // ユーザーの指示
+      // 会話履歴に追加（ウェイクワードが置き換えられた形で追加）
+      addConversationMessage(processedText, true); // ウェイクワードが「AIry」に置換されたユーザーの指示
       addConversationMessage(responseMessage, false); // システムの応答
 
       speakResponse(responseMessage); // TTSで応答を読み上げ
@@ -449,7 +482,7 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
     }
 
     // 基本コマンドに該当しない場合はLLMで処理
-    processWithLLM(text);
+    processWithLLM(processedText.replace("AIry", "").trim());
 
     // LLM処理後に音声認識を再開
     restartVoiceRecognition();
@@ -463,5 +496,6 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
     startVoiceRecognition,
     stopVoiceRecognition,
     restartVoiceRecognition,
+    processManualTextInput, // 手動テキスト入力処理関数を追加
   };
 };
