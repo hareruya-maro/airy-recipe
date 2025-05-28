@@ -1,4 +1,4 @@
-import { vertexAI } from "@genkit-ai/vertexai";
+import { gemini25FlashPreview0417, vertexAI } from "@genkit-ai/vertexai";
 import cors from "cors";
 import * as admin from "firebase-admin";
 import * as logger from "firebase-functions/logger";
@@ -26,7 +26,7 @@ const ai = genkit({
       location: LOCATION,
     }),
   ],
-  model: "vertexai/gemini-2.0-flash",
+  model: gemini25FlashPreview0417,
   // プロンプトファイルのパスを設定
   promptDir: path.join(__dirname, "prompts"),
 });
