@@ -50,8 +50,8 @@ export interface Step {
 export interface RecipeUpdate {
   title?: string;
   description?: string;
-  prepTime?: string | number;
-  cookTime?: string | number;
+  prepTime?: string;
+  cookTime?: string;
   servings?: number;
   difficulty?: string;
   image?: string;

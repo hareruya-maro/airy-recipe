@@ -53,6 +53,8 @@ type RecipeState = {
   lastAIResponse: string | null;
   conversationHistory: ConversationMessage[];
   isDialogVisible: boolean;
+  isVideoModalVisible: boolean;
+  currentVideoUrl: string | null;
 
   // データ取得アクション
   fetchRecipes: () => Promise<void>;
@@ -77,6 +79,10 @@ type RecipeState = {
 
   // ダイアログ表示状態
   setDialogVisible: (visible: boolean) => void;
+
+  // 動画モーダル関連
+  setVideoModalVisible: (visible: boolean) => void;
+  setCurrentVideoUrl: (url: string | null) => void;
 
   // セッションリセット
   resetCookingSession: () => void;
@@ -133,6 +139,8 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
   lastAIResponse: null,
   conversationHistory: [],
   isDialogVisible: false,
+  isVideoModalVisible: false,
+  currentVideoUrl: null,
 
   // Firestoreからレシピを取得
   fetchRecipes: async () => {
@@ -289,6 +297,10 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
   // ダイアログ表示状態の設定
   setDialogVisible: (visible) => set({ isDialogVisible: visible }),
 
+  // 動画モーダル関連
+  setVideoModalVisible: (visible) => set({ isVideoModalVisible: visible }),
+  setCurrentVideoUrl: (url) => set({ currentVideoUrl: url }),
+
   // セッションリセット
   resetCookingSession: () =>
     set({
@@ -297,5 +309,7 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
       lastAIResponse: null,
       conversationHistory: [],
       isDialogVisible: false,
+      isVideoModalVisible: false,
+      currentVideoUrl: null,
     }),
 }));

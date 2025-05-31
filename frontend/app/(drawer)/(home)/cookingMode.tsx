@@ -2,17 +2,25 @@ import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { FlatList, SafeAreaView, StyleSheet, View } from "react-native";
+import {
+  Dimensions,
+  FlatList,
+  SafeAreaView,
+  StyleSheet,
+  View,
+} from "react-native";
 import {
   Appbar,
   Button,
   IconButton,
+  Modal,
   Portal,
   Surface,
   Text,
   useTheme,
 } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import YoutubeIframe from "react-native-youtube-iframe";
 import { IngredientsList } from "../../../components/recipe/IngredientsList";
 import { StepsList } from "../../../components/recipe/StepsList";
 import { CookingTimer } from "../../../components/ui/CookingTimer";
@@ -53,6 +61,10 @@ export default function CookingModeScreen() {
     setLastAIResponse,
     conversationHistory, // 会話履歴
     isDialogVisible, // ダイアログ表示状態
+    isVideoModalVisible, // 動画モーダル表示状態
+    setVideoModalVisible, // 動画モーダル表示状態を設定する関数
+    currentVideoUrl, // 現在の動画URL
+    setCurrentVideoUrl, // 現在の動画URLを設定する関数
   } = useRecipeStore();
 
   const [showIngredients, setShowIngredients] = useState(false);
@@ -76,6 +88,16 @@ export default function CookingModeScreen() {
 
   // テキスト入力モーダルの状態
   const [isTextInputModalVisible, setTextInputModalVisible] = useState(false);
+
+  // 動画プレーヤーのステータスを管理
+  const [playing, setPlaying] = useState(false);
+
+  // YouTubeプレーヤーのイベントハンドラー
+  const onStateChange = useCallback((state: string) => {
+    if (state === "ended") {
+      setPlaying(false);
+    }
+  }, []);
 
   // テキスト入力モーダルの表示切替
   const toggleTextInputModal = () => {
@@ -195,6 +217,40 @@ export default function CookingModeScreen() {
       }
       await startVoiceRecognition();
     }
+  };
+
+  // 動画モーダルを閉じる
+  const closeVideoModal = () => {
+    setVideoModalVisible(false);
+    setPlaying(false);
+    setCurrentVideoUrl(null);
+  };
+
+  // YouTubeの動画IDを抽出する関数
+  const extractYouTubeID = (url: string | null): string | undefined => {
+    if (!url) return undefined;
+
+    // YouTubeのURL形式に一致する正規表現パターン
+    const patterns = [
+      /(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([^&]+)/,
+      /(?:https?:\/\/)?(?:www\.)?youtube\.com\/embed\/([^/?]+)/,
+      /(?:https?:\/\/)?(?:www\.)?youtu\.be\/([^/?]+)/,
+    ];
+
+    // 各パターンでマッチするか確認
+    for (const pattern of patterns) {
+      const match = url.match(pattern);
+      if (match && match[1]) {
+        return match[1];
+      }
+    }
+
+    // マッチしない場合はそのまま返す（既にIDのみの可能性）
+    if (/^[a-zA-Z0-9_-]{11}$/.test(url)) {
+      return url;
+    }
+
+    return undefined;
   };
 
   // 表示するセクションデータを作成
@@ -429,6 +485,43 @@ export default function CookingModeScreen() {
           submitLabel="送信"
           cancelLabel="キャンセル"
         />
+
+        {/* YouTube動画モーダル */}
+        <Modal
+          visible={isVideoModalVisible}
+          onDismiss={closeVideoModal}
+          contentContainerStyle={styles.videoModalContainer}
+        >
+          <View style={styles.videoModalContent}>
+            <Text style={styles.videoModalTitle}>料理手順の解説動画</Text>
+
+            <View style={styles.videoPlayerContainer}>
+              {currentVideoUrl && extractYouTubeID(currentVideoUrl) && (
+                <YoutubeIframe
+                  height={(Dimensions.get("window").width - 32) * (9 / 16)}
+                  width={Dimensions.get("window").width - 32}
+                  videoId={extractYouTubeID(currentVideoUrl) || ""}
+                  play={playing}
+                  onChangeState={onStateChange}
+                  initialPlayerParams={{
+                    controls: true,
+                    cc_lang_pref: "ja",
+                    modestbranding: true,
+                    preventFullScreen: false,
+                  }}
+                />
+              )}
+            </View>
+
+            <Button
+              mode="contained"
+              onPress={closeVideoModal}
+              style={styles.videoModalCloseButton}
+            >
+              閉じる
+            </Button>
+          </View>
+        </Modal>
       </View>
     </Portal.Host>
   );
@@ -539,5 +632,39 @@ const styles = StyleSheet.create({
   messageText: {
     fontSize: 16,
     marginTop: 4,
+  },
+  // 動画モーダル用スタイル
+  videoModalContainer: {
+    flex: 1,
+    backgroundColor: "#000",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 16,
+  },
+  videoModalContent: {
+    width: "100%",
+    backgroundColor: "#121212",
+    borderRadius: 8,
+    padding: 16,
+    alignItems: "center",
+  },
+  videoModalTitle: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 12,
+    textAlign: "center",
+  },
+  videoPlayerContainer: {
+    width: "100%",
+    borderRadius: 8,
+    overflow: "hidden",
+    marginBottom: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  videoModalCloseButton: {
+    width: "100%",
+    borderRadius: 30,
   },
 });

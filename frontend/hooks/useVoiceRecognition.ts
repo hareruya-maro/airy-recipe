@@ -27,6 +27,8 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
     currentStepIndex,
     addConversationMessage, // 会話履歴に追加する関数
     setDialogVisible, // ダイアログ表示状態を設定する関数
+    setVideoModalVisible, // 動画モーダル表示状態を設定する関数
+    setCurrentVideoUrl, // 現在の動画URLを設定する関数
   } = useRecipeStore();
 
   const [error, setError] = useState<string>("");
@@ -87,6 +89,66 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
       setIsSpeaking(false);
       // エラー時もダイアログを非表示
       setDialogVisible(false);
+    }
+  };
+
+  // 動画表示用の応答読み上げ関数（読み上げ後に動画モーダルを表示）
+  const speakResponseWithVideo = async (text: string, videoUrl: string) => {
+    try {
+      // 現在話している場合は一旦停止
+      if (isSpeaking) {
+        await Speech.stop();
+      }
+
+      // 動画URLを設定
+      setCurrentVideoUrl(videoUrl);
+
+      // 先にダイアログを表示状態にする
+      console.log("ダイアログを表示します");
+      setDialogVisible(true);
+
+      // 少し待ってから読み上げを開始（UIの更新を確実にするため）
+      setTimeout(async () => {
+        // 日本語で読み上げるようにオプションを設定
+        setIsSpeaking(true);
+        console.log("音声読み上げを開始します");
+        await Speech.speak(text, {
+          language: "ja-JP",
+          // 読み上げ完了時のコールバック
+          onDone: () => {
+            console.log("音声読み上げが完了しました");
+            setIsSpeaking(false);
+            // 読み上げ終了後にダイアログを非表示
+            setDialogVisible(false);
+            // 動画モーダルを表示
+            console.log("動画モーダルを表示します");
+            setVideoModalVisible(true);
+          },
+          // エラー発生時のコールバック
+          onError: (error) => {
+            console.error("TTSエラー:", error);
+            setIsSpeaking(false);
+            // エラー時もダイアログを非表示
+            setDialogVisible(false);
+            // エラー時も動画モーダルを表示
+            setVideoModalVisible(true);
+          },
+          onStopped: () => {
+            console.log("音声読み上げが停止されました");
+            setIsSpeaking(false);
+            setDialogVisible(false);
+            // 停止時も動画モーダルを表示
+            setVideoModalVisible(true);
+          },
+        });
+      }, 100);
+    } catch (e) {
+      console.error("TTSエラー:", e);
+      setIsSpeaking(false);
+      // エラー時もダイアログを非表示
+      setDialogVisible(false);
+      // エラー時も動画モーダルを表示
+      setVideoModalVisible(true);
     }
   };
 
@@ -265,7 +327,7 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
       console.log("LLM処理開始:", { text, recipeContext });
       console.log(processVoiceCommandFunction);
 
-      // Firebase Functions呼び出し
+      // Firebase Functions呼び出し（onCallGenkitを使用）
       const result = await processVoiceCommandFunction({
         text,
         recipeContext,
@@ -277,6 +339,7 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
       interface LLMResponse {
         success: boolean;
         response?: string;
+        videoUrl?: string;
         error?: string;
       }
 
@@ -290,8 +353,70 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
         // 会話履歴にLLMの応答を追加
         addConversationMessage(data.response, false);
 
-        // TTSで応答を読み上げ（この間はダイアログが表示される）
-        speakResponse(data.response);
+        // 動画URLが存在する場合は、読み上げ後に動画モーダルを表示
+        if (data.success && data.videoUrl) {
+          // 動画URLが存在する場合
+          console.log("動画URL:", data.videoUrl);
+          // 動画URLを設定
+          setCurrentVideoUrl(data.videoUrl);
+
+          try {
+            // 現在話している場合は一旦停止
+            if (isSpeaking) {
+              await Speech.stop();
+            }
+
+            // 先にダイアログを表示状態にする
+            console.log("ダイアログを表示します");
+            setDialogVisible(true);
+
+            // 少し待ってから読み上げを開始（UIの更新を確実にするため）
+            setTimeout(async () => {
+              // 日本語で読み上げるようにオプションを設定
+              setIsSpeaking(true);
+              console.log("音声読み上げを開始します");
+              await Speech.speak(data.response!, {
+                language: "ja-JP",
+                // 読み上げ完了時のコールバック
+                onDone: () => {
+                  console.log("音声読み上げが完了しました");
+                  setIsSpeaking(false);
+                  // 読み上げ終了後にダイアログを非表示
+                  setDialogVisible(false);
+                  // 動画モーダルを表示
+                  console.log("動画モーダルを表示します");
+                  setVideoModalVisible(true);
+                },
+                // エラー発生時のコールバック
+                onError: (error) => {
+                  console.error("TTSエラー:", error);
+                  setIsSpeaking(false);
+                  // エラー時もダイアログを非表示
+                  setDialogVisible(false);
+                  // エラー時も動画モーダルを表示
+                  setVideoModalVisible(true);
+                },
+                onStopped: () => {
+                  console.log("音声読み上げが停止されました");
+                  setIsSpeaking(false);
+                  setDialogVisible(false);
+                  // 停止時も動画モーダルを表示
+                  setVideoModalVisible(true);
+                },
+              });
+            }, 100);
+          } catch (e) {
+            console.error("TTSエラー:", e);
+            setIsSpeaking(false);
+            // エラー時もダイアログを非表示
+            setDialogVisible(false);
+            // エラー時も動画モーダルを表示
+            setVideoModalVisible(true);
+          }
+        } else {
+          // 動画URLがない場合は通常の応答読み上げ
+          speakResponse(data.response);
+        }
       } else {
         console.error("LLMエラー:", data.error);
         const errorMessage =
