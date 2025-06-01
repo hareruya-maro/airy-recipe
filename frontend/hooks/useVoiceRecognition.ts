@@ -307,6 +307,12 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
   const processWithLLM = async (text: string) => {
     try {
       setIsProcessingLLM(true);
+      // ユーザーに処理中であることを知らせる応答メッセージを設定
+      const processingMessage = "質問を処理しています...";
+      setLastAIResponse(processingMessage);
+
+      // 先にダイアログを表示状態にして、ユーザーに処理中と伝える
+      setDialogVisible(true);
 
       console.log("processWithLLM", text);
 
@@ -325,13 +331,15 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
         : null;
 
       console.log("LLM処理開始:", { text, recipeContext });
-      console.log(processVoiceCommandFunction);
 
       // Firebase Functions呼び出し（onCallGenkitを使用）
       const result = await processVoiceCommandFunction({
         text,
         recipeContext,
       });
+
+      // 処理中ダイアログを閉じる（結果表示のためにすぐに再表示されます）
+      setDialogVisible(false);
 
       console.log("LLM処理結果:", result);
 
