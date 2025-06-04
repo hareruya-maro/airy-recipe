@@ -8,6 +8,7 @@
     "build:local:ios:develop": "eas build -p ios --profile development --local",
     "build:local:ios:device": "eas build -p ios --profile device --local",
     "build:local:ios:preview": "eas build -p ios --profile preview --local",
+    "build:local:ios:production": "eas build -p ios --profile production --local",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
