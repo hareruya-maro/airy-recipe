@@ -21,7 +21,7 @@ import {
 } from "../../../components/ui/FlowingGradient";
 import PulsingDialog from "../../../components/ui/PulsingDialog";
 import TextInputModal from "../../../components/ui/TextInputModal";
-import { VideoModal } from "../../../components/ui/VideoModal";
+import { VideoModal, VideoModalRef } from "../../../components/ui/VideoModal";
 import { useTimer } from "../../../hooks/useTimer";
 import { useVoiceRecognition } from "../../../hooks/useVoiceRecognition";
 import {
@@ -66,6 +66,9 @@ export default function CookingModeScreen() {
 
   // FlatListのリファレンス
   const flatListRef = useRef<FlatList>(null);
+
+  // VideoModalへの参照
+  const videoModalRef = useRef<VideoModalRef>(null);
 
   const { bottom } = useSafeAreaInsets();
   const { colors } = useTheme();
@@ -135,9 +138,76 @@ export default function CookingModeScreen() {
     [showIngredients]
   );
 
-  // 音声認識の処理ハンドラー（タイマー機能を追加）
+  // 動画関連の音声コマンドを処理するコールバック関数
+  const handleVideoCommands = useCallback(
+    (text: string): boolean => {
+      const lowerText = text.toLowerCase();
+
+      // 動画モーダルが表示されている場合のみコマンドを処理
+      if (isVideoModalVisible && videoModalRef.current) {
+        // 動画再生コマンド
+        if (
+          lowerText.includes("再生") ||
+          lowerText.includes("プレイ") ||
+          lowerText.includes("スタート") ||
+          lowerText.includes("始めて")
+        ) {
+          videoModalRef.current.play();
+          return true;
+        }
+
+        // 動画停止コマンド
+        if (
+          lowerText.includes("停止") ||
+          lowerText.includes("ストップ") ||
+          lowerText.includes("一時停止") ||
+          lowerText.includes("ポーズ") ||
+          lowerText.includes("止めて")
+        ) {
+          videoModalRef.current.pause();
+          return true;
+        }
+
+        // 動画再生/停止切り替えコマンド
+        if (lowerText.includes("切り替え") || lowerText.includes("トグル")) {
+          videoModalRef.current.togglePlay();
+          return true;
+        }
+
+        // 全画面表示切り替えコマンド
+        if (
+          lowerText.includes("全画面") ||
+          lowerText.includes("フルスクリーン")
+        ) {
+          videoModalRef.current.toggleFullscreen();
+          return true;
+        }
+
+        // 動画を閉じるコマンド
+        if (
+          lowerText.includes("閉じて") ||
+          lowerText.includes("クローズ") ||
+          lowerText.includes("終了") ||
+          lowerText.includes("閉じる")
+        ) {
+          setVideoModalVisible(false);
+          return true;
+        }
+      }
+
+      return false;
+    },
+    [isVideoModalVisible, setVideoModalVisible]
+  );
+
+  // 音声認識の処理ハンドラー（タイマー機能と動画制御を追加）
   const handleVoiceRecognitionResult = useCallback(
     (text: string) => {
+      // 動画関連コマンドを先に処理
+      if (handleVideoCommands(text)) {
+        return true; // 動画コマンドが処理された
+      }
+
       // 現在のレシピ手順テキストを取得
       const currentStepText =
         currentRecipe?.steps?.[currentStepIndex]?.description || "";
@@ -159,6 +229,7 @@ export default function CookingModeScreen() {
       return false;
     },
     [
+      handleVideoCommands,
       currentRecipe,
       currentStepIndex,
       isTimerDialogVisible,
@@ -177,7 +248,7 @@ export default function CookingModeScreen() {
     processManualTextInput, // 手動テキスト入力処理関数を取得
   } = useVoiceRecognition({
     onShowIngredients: (isShow: boolean) => handleToggleIngredients(isShow), // 材料表示
-    onVoiceRecognitionResult: handleVoiceRecognitionResult, // 音声認識結果ハンドラー（タイマー処理含む）
+    onVoiceRecognitionResult: handleVoiceRecognitionResult, // 音声認識結果ハンドラー（タイマー処理と動画制御含む）
   });
 
   // モーダルを閉じる処理
@@ -427,6 +498,7 @@ export default function CookingModeScreen() {
 
         {/* YouTube動画モーダル */}
         <VideoModal
+          ref={videoModalRef}
           visible={isVideoModalVisible}
           onClose={closeVideoModal}
           videoUrl={currentVideoUrl}
