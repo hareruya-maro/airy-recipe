@@ -31,7 +31,7 @@ export default function HomeLayout() {
       <Stack.Screen
         name="imageUpload"
         options={{
-          title: "レシピ本の写真撮影・アップロード",
+          title: "レシピ登録",
           headerShown: false,
           presentation: "card",
         }}

@@ -31,7 +31,7 @@ export default function ImageUploadScreen() {
     <>
       <Appbar.Header>
         <Appbar.BackAction onPress={() => router.back()} />
-        <Appbar.Content title="レシピ本の写真撮影・アップロード" />
+        <Appbar.Content title="レシピ登録" />
       </Appbar.Header>
 
       <View style={styles.container}>

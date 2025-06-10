@@ -62,59 +62,22 @@ const PulsingDialog: React.FC<PulsingDialogProps> = ({
     };
   }, [visible, message, dialogOpacity, minOpacity, maxOpacity, pulseDuration]);
 
-  // ダイアログのスタイルをアニメーション値と合成
-  const animatedDialogStyle = {
-    ...styles.dialogContainer,
-    ...style,
-    backgroundColor: dialogOpacity.interpolate({
-      inputRange: [minOpacity, maxOpacity],
-      outputRange: [
-        `rgba(0, 0, 0, ${minOpacity})`,
-        `rgba(0, 0, 0, ${maxOpacity})`,
-      ],
-    }),
-  };
-
   return (
     <Dialog visible={visible} dismissable={false}>
-      <Animated.View style={animatedDialogStyle}>
-        <Dialog.Title style={styles.dialogTitle}>{title}</Dialog.Title>
-        <Dialog.Content>
-          <Text style={styles.dialogText}>{message}</Text>
-        </Dialog.Content>
-        <Dialog.Actions>
-          {isLoading && (
-            <ActivityIndicator
-              animating={true}
-              color="#fff"
-              style={styles.dialogLoader}
-            />
-          )}
-        </Dialog.Actions>
-      </Animated.View>
+      <Dialog.Title>{title}</Dialog.Title>
+      <Dialog.Content>
+        <Text variant="titleLarge">{message}</Text>
+      </Dialog.Content>
+      <Dialog.Actions>
+        {isLoading && (
+          <ActivityIndicator animating={true} style={styles.dialogLoader} />
+        )}
+      </Dialog.Actions>
     </Dialog>
   );
 };
 
 const styles = StyleSheet.create({
-  dialogContainer: {
-    backgroundColor: "rgba(0, 0, 0, 0.8)",
-    padding: 20,
-    borderRadius: 12,
-    minWidth: "80%",
-    maxWidth: "90%",
-  },
-  dialogTitle: {
-    color: "#fff",
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 10,
-  },
-  dialogText: {
-    color: "#fff",
-    fontSize: 24,
-    lineHeight: 32,
-  },
   dialogLoader: {
     marginLeft: 8,
   },
