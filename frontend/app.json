@@ -47,7 +47,8 @@
       ],
       [
         "expo-apple-authentication"
-      ]
+      ],
+      "expo-llm-mediapipe"
     ],
     "experiments": {
       "typedRoutes": true

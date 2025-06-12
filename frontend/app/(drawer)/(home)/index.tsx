@@ -1,3 +1,4 @@
+import ExpoLlmMediapipe from "expo-llm-mediapipe";
 import { useNavigation, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
@@ -9,6 +10,8 @@ import {
   View,
 } from "react-native";
 import { Appbar, Card, Portal, Snackbar, Text } from "react-native-paper";
+import { ModelDownloadModal } from "../../../components/ModelDownloadModal";
+import { MODEL_NAME, useModelStore } from "../../../store/modelStore";
 import { Recipe, useRecipeStore } from "../../../store/recipeStore";
 
 // FirestoreのTimestampを日付文字列に変換する関数
@@ -48,6 +51,12 @@ const formatDate = (timestamp: any): string => {
 
 export default function HomeScreen() {
   const { recipes, fetchRecipes, isLoadingRecipes } = useRecipeStore();
+  const {
+    checkIfModelDownloaded,
+    fetchDownloadedModels,
+    showDownloadModal,
+    isModelDownloaded,
+  } = useModelStore();
   const router = useRouter();
   const navigation = useNavigation<any>();
   const [snackbarVisible, setSnackbarVisible] = useState(false);
@@ -58,6 +67,48 @@ export default function HomeScreen() {
   useEffect(() => {
     fetchRecipes();
   }, [fetchRecipes]);
+
+  // コンポーネントのマウント時にモデルがダウンロード済みかどうかを確認
+  useEffect(() => {
+    const checkModelStatus = async () => {
+      await fetchDownloadedModels();
+      const isDownloaded = await checkIfModelDownloaded();
+      console.log(
+        `${MODEL_NAME}のダウンロード状態: ${
+          isDownloaded ? "ダウンロード済み" : "未ダウンロード"
+        }`
+      );
+
+      // モデルがダウンロードされていない場合、モーダルを表示
+      if (!isDownloaded) {
+        showDownloadModal();
+      } else {
+        console.log("createModelFromDownloadedを実行します");
+        ExpoLlmMediapipe.createModelFromDownloaded(
+          MODEL_NAME,
+          1024, // maxTokens
+          40, // topK
+          0.7, // temperature
+          42
+        )
+          .then((number) => {
+            console.log(`${MODEL_NAME}のモデルが正常に作成されました`);
+            ExpoLlmMediapipe.generateResponse(number, 1, "こんにちは！")
+              .then((response) => {
+                console.log(`モデル応答: ${response}`);
+              })
+              .catch((error) => {
+                console.error(`モデル応答エラー: ${error.message}`);
+              });
+          })
+          .catch((error) => {
+            console.error(`モデル作成エラー: ${error.message}`);
+          });
+      }
+    };
+
+    checkModelStatus();
+  }, [fetchDownloadedModels, checkIfModelDownloaded, showDownloadModal]);
 
   // 引っ張って更新する処理
   const onRefresh = async () => {
@@ -117,6 +168,8 @@ export default function HomeScreen() {
 
   return (
     <>
+      <ModelDownloadModal />
+
       <Appbar.Header>
         <Appbar.Action icon="menu" onPress={openDrawer} />
         <Appbar.Content title="AIry Recipe" />

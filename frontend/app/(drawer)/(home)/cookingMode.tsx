@@ -15,10 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { IngredientsList } from "../../../components/recipe/IngredientsList";
 import { StepsList } from "../../../components/recipe/StepsList";
 import { CookingTimer } from "../../../components/ui/CookingTimer";
-import {
-  FlowingGradient,
-  FlowingGradientRef,
-} from "../../../components/ui/FlowingGradient";
+import { FlowingGradientRef } from "../../../components/ui/FlowingGradient";
 import PulsingDialog from "../../../components/ui/PulsingDialog";
 import TextInputModal from "../../../components/ui/TextInputModal";
 import { VideoModal, VideoModalRef } from "../../../components/ui/VideoModal";
@@ -418,7 +415,7 @@ export default function CookingModeScreen() {
     <Portal.Host>
       <View style={{ flex: 1 }}>
         {/* バックグラウンドのフローグラデーション */}
-        <FlowingGradient ref={flowingGradientRef} />
+        {/* <FlowingGradient ref={flowingGradientRef} /> */}
 
         <Appbar.Header style={styles.transparentHeader}>
           <Appbar.Content
