@@ -1,26 +1,20 @@
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import { LinearGradient } from "expo-linear-gradient";
+import ExpoLlmMediapipe from "expo-llm-mediapipe";
 import { router } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { FlatList, SafeAreaView, StyleSheet, View } from "react-native";
-import {
-  Appbar,
-  Button,
-  Portal,
-  Surface,
-  Text,
-  useTheme,
-} from "react-native-paper";
+import { Appbar, Button, Portal, Surface, Text } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { IngredientsList } from "../../../components/recipe/IngredientsList";
 import { StepsList } from "../../../components/recipe/StepsList";
 import { CookingTimer } from "../../../components/ui/CookingTimer";
-import { FlowingGradientRef } from "../../../components/ui/FlowingGradient";
 import PulsingDialog from "../../../components/ui/PulsingDialog";
 import TextInputModal from "../../../components/ui/TextInputModal";
 import { VideoModal, VideoModalRef } from "../../../components/ui/VideoModal";
 import { useTimer } from "../../../hooks/useTimer";
 import { useVoiceRecognition } from "../../../hooks/useVoiceRecognition";
+import { MODEL_NAME } from "../../../store/modelStore";
 import {
   ConversationMessage,
   useRecipeStore,
@@ -47,7 +41,6 @@ export default function CookingModeScreen() {
     previousStep,
     recognizedText,
     lastAIResponse,
-    setLastAIResponse,
     conversationHistory, // 会話履歴
     isDialogVisible, // ダイアログ表示状態
     isVideoModalVisible, // 動画モーダル表示状態
@@ -57,9 +50,8 @@ export default function CookingModeScreen() {
   } = useRecipeStore();
 
   const [showIngredients, setShowIngredients] = useState(false);
-
-  // FlowingGradientコンポーネントへの参照
-  const flowingGradientRef = useRef<FlowingGradientRef>(null);
+  // Gemma 3モデル参照用の状態変数
+  const [modelHandle, setModelHandle] = useState<number | null>(null);
 
   // FlatListのリファレンス
   const flatListRef = useRef<FlatList>(null);
@@ -68,7 +60,6 @@ export default function CookingModeScreen() {
   const videoModalRef = useRef<VideoModalRef>(null);
 
   const { bottom } = useSafeAreaInsets();
-  const { colors } = useTheme();
 
   // タイマー機能のhook
   const {
@@ -119,6 +110,43 @@ export default function CookingModeScreen() {
     };
   }, []);
 
+  // Gemma 3モデルをロードする
+  useEffect(() => {
+    // モデルをロード
+    const loadModel = async () => {
+      try {
+        console.log("モデルをロード中...");
+        // モデルをダウンロード済みのモデルからロード
+        const handle = await ExpoLlmMediapipe.createModelFromDownloaded(
+          MODEL_NAME,
+          1024, // maxTokens
+          40, // topK
+          0.7, // temperature
+          42 // seed
+        );
+        setModelHandle(handle);
+        console.log(`モデルがロードされました。ハンドル: ${handle}`);
+      } catch (error) {
+        console.error("モデルのロードに失敗しました:", error);
+      }
+    };
+
+    loadModel();
+
+    // コンポーネントのアンマウント時にモデルを破棄
+    return () => {
+      if (modelHandle !== null) {
+        ExpoLlmMediapipe.releaseModel(modelHandle)
+          .then(() => {
+            console.log("モデルが正常に破棄されました");
+          })
+          .catch((error: Error) => {
+            console.error("モデル破棄エラー:", error);
+          });
+      }
+    };
+  }, []); // 空の依存配列で初回のみ実行
+
   // セクションデータが更新されたら自動スクロールする
   useEffect(() => {
     if (conversationHistory.length > 0 && flatListRef.current) {
@@ -137,71 +165,84 @@ export default function CookingModeScreen() {
 
   // 動画関連の音声コマンドを処理するコールバック関数
   const handleVideoCommands = useCallback(
-    (text: string): boolean => {
-      const lowerText = text.toLowerCase();
+    async (text: string): Promise<boolean> => {
+      // 動画モーダルが表示されていない場合は処理しない
+      if (!isVideoModalVisible || !videoModalRef.current || !modelHandle) {
+        return false;
+      }
 
-      // 動画モーダルが表示されている場合のみコマンドを処理
-      if (isVideoModalVisible && videoModalRef.current) {
-        // 動画再生コマンド
-        if (
-          lowerText.includes("再生") ||
-          lowerText.includes("プレイ") ||
-          lowerText.includes("スタート") ||
-          lowerText.includes("始めて")
-        ) {
+      try {
+        // プロンプトを英語に変更し、柔軟な認識を追加
+        const prompt = `
+Analyze the user's statement and determine if it's a command related to the video player.
+If it is a command, identify which action should be taken from the following categories:
+
+- play: Play the video
+  Examples: "play", "start", "play the video", "continue", "resume", "start playing"
+- pause: Pause the video
+  Examples: "pause", "stop", "pause the video", "wait", "halt"
+- toggle_play: Toggle between play and pause
+  Examples: "toggle", "toggle play", "switch play status", "play/pause"
+- fullscreen: Switch to fullscreen mode
+  Examples: "fullscreen", "enlarge", "maximize", "show in full screen", "expand" 
+- close: Close the video player
+  Examples: "close", "exit", "close the video", "end", "quit", "stop showing"
+- not_command: Not a video player related command
+
+Look for the intent behind the statement, not just exact matches. Understand similar commands even if the phrasing is different.
+
+User's statement: "${text}"
+
+Reply with ONLY the category name from above. For example: "play", "pause", etc.
+`;
+
+        console.log("動画コマンド判定のプロンプト:", prompt);
+
+        // Gemma 3モデルで判定
+        const response = await ExpoLlmMediapipe.generateResponse(
+          modelHandle,
+          1,
+          prompt
+        );
+        console.log("Gemma 3モデルの判定結果:", response);
+
+        // レスポンスから余分な空白や改行を削除して小文字に統一
+        const command = response.trim().toLowerCase();
+
+        // コマンドに応じたアクションを実行
+        if (command.includes("play") && !command.includes("toggle")) {
           videoModalRef.current.play();
           return true;
-        }
-
-        // 動画停止コマンド
-        if (
-          lowerText.includes("停止") ||
-          lowerText.includes("ストップ") ||
-          lowerText.includes("一時停止") ||
-          lowerText.includes("ポーズ") ||
-          lowerText.includes("止めて")
-        ) {
+        } else if (command.includes("pause")) {
           videoModalRef.current.pause();
           return true;
-        }
-
-        // 動画再生/停止切り替えコマンド
-        if (lowerText.includes("切り替え") || lowerText.includes("トグル")) {
+        } else if (
+          command.includes("toggle_play") ||
+          command.includes("toggle")
+        ) {
           videoModalRef.current.togglePlay();
           return true;
-        }
-
-        // 全画面表示切り替えコマンド
-        if (
-          lowerText.includes("全画面") ||
-          lowerText.includes("フルスクリーン")
-        ) {
+        } else if (command.includes("fullscreen")) {
           videoModalRef.current.toggleFullscreen();
           return true;
-        }
-
-        // 動画を閉じるコマンド
-        if (
-          lowerText.includes("閉じて") ||
-          lowerText.includes("クローズ") ||
-          lowerText.includes("終了") ||
-          lowerText.includes("閉じる")
-        ) {
+        } else if (command.includes("close")) {
           setVideoModalVisible(false);
           return true;
         }
+      } catch (error) {
+        console.error("動画コマンド判定エラー:", error);
       }
 
       return false;
     },
-    [isVideoModalVisible, setVideoModalVisible]
+    [isVideoModalVisible, modelHandle, setVideoModalVisible]
   );
 
   // 音声認識の処理ハンドラー（タイマー機能と動画制御を追加）
   const handleVoiceRecognitionResult = useCallback(
-    (text: string) => {
+    async (text: string) => {
       // 動画関連コマンドを先に処理
-      if (handleVideoCommands(text)) {
+      if (await handleVideoCommands(text)) {
         return true; // 動画コマンドが処理された
       }
 
@@ -212,12 +253,12 @@ export default function CookingModeScreen() {
       // タイマー関連の音声コマンドを処理
       if (isTimerDialogVisible) {
         // タイマーダイアログが表示されている場合、確認応答を優先処理
-        if (processTimerDialogResponse(text)) {
+        if (await processTimerDialogResponse(text, modelHandle)) {
           return true; // 音声コマンドが処理された
         }
       } else {
         // タイマー設定コマンドを処理
-        if (processVoiceCommand(text, currentStepText)) {
+        if (await processVoiceCommand(text, currentStepText, modelHandle)) {
           return true; // 音声コマンドが処理された
         }
       }
@@ -232,6 +273,7 @@ export default function CookingModeScreen() {
       isTimerDialogVisible,
       processTimerDialogResponse,
       processVoiceCommand,
+      modelHandle, // modelHandleを依存配列に追加
     ]
   );
 
@@ -246,6 +288,7 @@ export default function CookingModeScreen() {
   } = useVoiceRecognition({
     onShowIngredients: (isShow: boolean) => handleToggleIngredients(isShow), // 材料表示
     onVoiceRecognitionResult: handleVoiceRecognitionResult, // 音声認識結果ハンドラー（タイマー処理と動画制御含む）
+    modelHandle: modelHandle, // Gemma 3モデルハンドルを渡す
   });
 
   // モーダルを閉じる処理
@@ -256,15 +299,7 @@ export default function CookingModeScreen() {
   const toggleVoiceRecognition = async () => {
     if (isListening) {
       await stopVoiceRecognition();
-      // グラデーションのアニメーションを停止
-      if (flowingGradientRef.current?.stopColorAnimation) {
-        flowingGradientRef.current.stopColorAnimation();
-      }
     } else {
-      // グラデーションのアニメーションを開始
-      if (flowingGradientRef.current?.startColorAnimation) {
-        flowingGradientRef.current.startColorAnimation(2000);
-      }
       await startVoiceRecognition();
     }
   };

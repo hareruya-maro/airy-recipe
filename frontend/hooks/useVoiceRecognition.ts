@@ -2,6 +2,7 @@ import Voice, {
   SpeechErrorEvent,
   SpeechResultsEvent,
 } from "@react-native-voice/voice";
+import ExpoLlmMediapipe from "expo-llm-mediapipe"; // Gemma 3モデルを使うためのライブラリ
 import * as Speech from "expo-speech"; // TTSのためのexpo-speechをインポート
 import { httpsCallable } from "firebase/functions";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -11,11 +12,14 @@ import { useRecipeStore } from "../store/recipeStore";
 // コールバック関数の型定義
 type VoiceCallbacks = {
   onShowIngredients?: (isShow: boolean) => void; // 材料表示用コールバック
-  onVoiceRecognitionResult?: (text: string) => boolean; // 音声認識結果処理用コールバック（返り値はコマンドが処理されたかどうか）
+  onVoiceRecognitionResult?: (text: string) => Promise<boolean> | boolean; // 音声認識結果処理用コールバック（返り値はコマンドが処理されたかどうか）
   onManualTextInput?: () => void; // 手動テキスト入力を要求するコールバック
+  modelHandle?: number | null; // Gemma 3モデルハンドル（cookingMode.tsxから提供される）
 };
 
 export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
+  // 外部から提供されたmodelHandleを利用（cookingMode.tsxからのモデルハンドル）
+  const externalModelHandle = callbacks?.modelHandle;
   const {
     isVoiceListening,
     setVoiceListening,
@@ -452,19 +456,23 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
     }
   };
 
+  // 外部から提供されるGemma 3モデルのみを使用
+
   // コマンド処理のメイン関数
-  const processVoiceCommand = (text: string) => {
+  const processVoiceCommand = async (text: string) => {
     if (!text.trim()) return; // 空のテキストは処理しない
 
     // まず外部のコールバックによる処理を試みる
     // もしコールバックがtrueを返したら（コマンドが処理されたら）、ここで終了
-    if (
-      callbacks?.onVoiceRecognitionResult &&
-      callbacks.onVoiceRecognitionResult(text)
-    ) {
-      console.log("外部コールバックでコマンドが処理されました:", text);
-      restartVoiceRecognition();
-      return;
+    if (callbacks?.onVoiceRecognitionResult) {
+      const result = await Promise.resolve(
+        callbacks.onVoiceRecognitionResult(text)
+      );
+      if (result) {
+        console.log("外部コールバックでコマンドが処理されました:", text);
+        restartVoiceRecognition();
+        return;
+      }
     }
 
     // すべて小文字で比較して、部分一致でコマンドを処理
@@ -537,6 +545,112 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
       return;
     }
 
+    // 外部から提供されたGemma 3モデルが利用可能な場合はそれを使って基本コマンドを判断する
+    if (externalModelHandle) {
+      try {
+        // Gemma 3モデルに判断させるためのプロンプト
+        const prompt = `
+Analyze the user's statement and determine what basic command it represents.
+If a command is identified, determine which action should be taken from the following categories:
+
+- next_step: Move to the next step
+  Examples: "next", "next step", "go forward", "continue", "proceed", "次", "次へ", "次のステップ", 
+            "進める", "先に進む", "次に行く", "次のページ", "次に進む"
+- previous_step: Go back to the previous step
+  Examples: "back", "previous", "go back", "previous step", "return", "戻る", "前へ", "前のステップ", 
+            "戻って", "前に戻る", "一つ前", "前のページ"
+- show_ingredients: Display the ingredients list
+  Examples: "ingredients", "show ingredients", "what do I need", "materials", "材料", "材料を見せて", 
+            "材料リスト", "ざいりょう", "必要なもの", "何が必要"
+- show_steps: Display the steps/instructions list
+  Examples: "steps", "show steps", "instructions", "recipe", "procedure", "手順", "ステップ", "作り方", 
+            "レシピ", "手順を見せて", "てじゅん", "どうやって作る"
+- other_command: Any other command not listed above
+
+Look for the intent behind the statement, not just exact matches. Understand similar commands even if the phrasing is different.
+
+User's statement: "${commandText}"
+
+Reply with ONLY the category name from above. For example: "next_step", "show_ingredients", etc.
+`;
+
+        console.log("基本コマンド判定のプロンプト:", prompt);
+
+        // Gemma 3モデルで判定
+        const response = await ExpoLlmMediapipe.generateResponse(
+          externalModelHandle,
+          1,
+          prompt
+        );
+        console.log("Gemma 3モデルの判定結果:", response);
+
+        // レスポンスから余分な空白や改行を削除して小文字に統一
+        const command = response.trim().toLowerCase();
+
+        if (command.includes("next_step")) {
+          nextStep();
+          const responseMessage = "次のステップに進みます";
+          setLastAIResponse(responseMessage);
+
+          // 会話履歴に追加
+          addConversationMessage(processedText, true);
+          addConversationMessage(responseMessage, false);
+
+          speakResponse(responseMessage);
+          restartVoiceRecognition();
+          return true;
+        } else if (command.includes("previous_step")) {
+          previousStep();
+          const responseMessage = "前のステップに戻ります";
+          setLastAIResponse(responseMessage);
+
+          // 会話履歴に追加
+          addConversationMessage(processedText, true);
+          addConversationMessage(responseMessage, false);
+
+          speakResponse(responseMessage);
+          restartVoiceRecognition();
+          return true;
+        } else if (command.includes("show_ingredients")) {
+          // 材料リストを表示
+          const responseMessage = "材料リストを表示します";
+          setLastAIResponse(responseMessage);
+
+          // 会話履歴に追加
+          addConversationMessage(processedText, true);
+          addConversationMessage(responseMessage, false);
+
+          speakResponse(responseMessage);
+          // コールバック関数が提供されている場合は実行
+          if (callbacks?.onShowIngredients) {
+            callbacks.onShowIngredients(true);
+          }
+          restartVoiceRecognition();
+          return true;
+        } else if (command.includes("show_steps")) {
+          // 手順リストを表示
+          const responseMessage = "手順リストを表示します";
+          setLastAIResponse(responseMessage);
+
+          // 会話履歴に追加
+          addConversationMessage(processedText, true);
+          addConversationMessage(responseMessage, false);
+
+          speakResponse(responseMessage);
+          // 材料表示を無効にする（コールバックが提供されている場合）
+          if (callbacks?.onShowIngredients) {
+            callbacks.onShowIngredients(false); // 材料を非表示（手順を表示）
+          }
+          restartVoiceRecognition();
+          return true;
+        }
+      } catch (error) {
+        console.error("基本コマンド判定エラー:", error);
+        // エラーが発生した場合はフォールバックとして従来の方法で判定
+      }
+    }
+
+    // モデルが使えない場合やエラーが発生した場合は従来の方法で基本コマンドを判定
     // 基本コマンドを先に処理（即時応答が必要なもの）
     if (
       commandText.includes("次") ||

@@ -7,8 +7,8 @@ import { create } from "zustand";
 
 // モデルのURL（実際のプロジェクトのモデルURLに置き換えてください）
 export const MODEL_URL =
-  "https://huggingface.co/t-ghosh/gemma-tflite/resolve/main/gemma3-1B-it-int4.task";
-export const MODEL_NAME = "gemma3-1B-it-int4.task";
+  "https://firebasestorage.googleapis.com/v0/b/airy-recipe.firebasestorage.app/o/model%2Fgemma-3n-E2B-it-int4.task?alt=media&token=a99738cd-ee22-4ba1-85a4-4c106799f0f8";
+export const MODEL_NAME = "gemma-3n-E2B-it-int4.task";
 
 type ModelState = {
   downloadedModels: string[];

@@ -1,3 +1,4 @@
+import ExpoLlmMediapipe from "expo-llm-mediapipe";
 import { useEffect, useRef } from "react";
 import { useTimerStore } from "../store/timerStore";
 
@@ -124,7 +125,70 @@ export const useTimer = () => {
   };
 
   // 音声認識テキストからタイマーコマンドを処理する関数
-  const processVoiceCommand = (text: string, currentStep?: string): boolean => {
+  const processVoiceCommand = async (
+    text: string,
+    currentStep?: string,
+    modelHandle?: number | null
+  ): Promise<boolean> => {
+    // Gemma 3モデルが利用可能な場合はそれを使ってタイマーコマンドかどうかを判断する
+    if (modelHandle) {
+      try {
+        // Gemma 3モデルに判断させるためのプロンプト（柔軟な認識を追加）
+        const prompt = `
+Analyze the user's statement and determine if it's a command related to timer settings.
+If it is a command, identify which action should be taken from the following categories:
+
+- set_timer_with_value: Set a timer with a specific time (minutes/seconds) mentioned
+  Examples: "set timer for 5 minutes", "timer 30 seconds", "5分のタイマー", "3分タイマーをセット", 
+            "タイマー3分", "count 2 minutes", "set alarm for 1 minute", "30秒計って"
+- set_timer_from_step: Extract cooking time from the current recipe step and set a timer
+  Examples: "timer for this step", "set timer", "start timer", "タイマーをセット", 
+            "このステップのタイマー", "タイマーお願い", "時間を計って", "時間を測って"
+- not_timer_command: Not a timer-related command
+
+Look for the intent behind the statement, not just exact matches. Understand similar commands even if the phrasing is different.
+
+User's statement: "${text}"
+${currentStep ? `Current recipe step: "${currentStep}"` : ""}
+
+Reply with ONLY the category name from above. For example: "set_timer_with_value", "set_timer_from_step", etc.
+`;
+
+        console.log("タイマーコマンド判定のプロンプト:", prompt);
+
+        // Gemma 3モデルで判定
+        const response = await ExpoLlmMediapipe.generateResponse(
+          modelHandle,
+          1,
+          prompt
+        );
+        console.log("Gemma 3モデルの判定結果:", response);
+
+        // レスポンスから余分な空白や改行を削除して小文字に統一
+        const command = response.trim().toLowerCase();
+
+        if (command.includes("set_timer_with_value")) {
+          // 時間が直接指定されている場合
+          const seconds = parseTimeFromVoice(text);
+          if (seconds) {
+            showTimerDialog(seconds);
+            return true;
+          }
+        } else if (command.includes("set_timer_from_step") && currentStep) {
+          // 現在のステップから時間を抽出してタイマーをセット
+          const stepSeconds = extractCookingTimeFromStep(currentStep);
+          if (stepSeconds) {
+            showTimerDialog(stepSeconds, `${currentStep}のタイマー`);
+            return true;
+          }
+        }
+      } catch (error) {
+        console.error("タイマーコマンド判定エラー:", error);
+        // エラーが発生した場合はフォールバックとして従来の方法で判定
+      }
+    }
+
+    // モデルが使えない場合やエラーが発生した場合は従来の方法でタイマーコマンドを判定
     const lowerText = text.toLowerCase();
 
     // タイマーキーワードの確認
@@ -152,9 +216,63 @@ export const useTimer = () => {
   };
 
   // タイマーダイアログの操作に対する応答を処理
-  const processTimerDialogResponse = (text: string): boolean => {
+  const processTimerDialogResponse = async (
+    text: string,
+    modelHandle?: number | null
+  ): Promise<boolean> => {
     if (!isDialogVisible) return false;
 
+    // Gemma 3モデルが利用可能な場合はそれを使ってタイマー確認応答かどうかを判断する
+    if (modelHandle) {
+      try {
+        // Gemma 3モデルに判断させるためのプロンプト（柔軟な認識を追加）
+        const prompt = `
+Analyze the user's statement and determine if it's a response to the timer confirmation dialog.
+A timer confirmation dialog is currently displayed, asking if the user wants to set the timer.
+Based on the user's response, identify which action should be taken from the following categories:
+
+- confirm: Start the timer (positive response)
+  Examples: "yes", "ok", "sure", "start", "confirm", "go ahead", "proceed", "はい", "オッケー", 
+            "いいよ", "開始", "スタート", "始めて", "セットして", "タイマースタート", "うん"
+- cancel: Cancel the timer (negative response)
+  Examples: "no", "cancel", "don't", "stop", "nevermind", "いいえ", "キャンセル", "やめて", 
+            "必要ない", "不要", "ダメ", "止めて", "ストップ", "結構です"
+- not_response: Not a valid response
+
+Look for the intent behind the statement, not just exact matches. Understand similar responses even if the phrasing is different.
+
+User's statement: "${text}"
+
+Reply with ONLY the category name from above. For example: "confirm", "cancel", etc.
+`;
+
+        console.log("タイマー確認応答判定のプロンプト:", prompt);
+
+        // Gemma 3モデルで判定
+        const response = await ExpoLlmMediapipe.generateResponse(
+          modelHandle,
+          1,
+          prompt
+        );
+        console.log("Gemma 3モデルの判定結果:", response);
+
+        // レスポンスから余分な空白や改行を削除して小文字に統一
+        const command = response.trim().toLowerCase();
+
+        if (command.includes("confirm")) {
+          startTimer();
+          return true;
+        } else if (command.includes("cancel")) {
+          hideTimerDialog();
+          return true;
+        }
+      } catch (error) {
+        console.error("タイマー確認応答判定エラー:", error);
+        // エラーが発生した場合はフォールバックとして従来の方法で判定
+      }
+    }
+
+    // モデルが使えない場合やエラーが発生した場合は従来の方法でタイマー応答を判定
     const lowerText = text.toLowerCase();
 
     // 肯定的な応答パターン

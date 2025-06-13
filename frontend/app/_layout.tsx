@@ -1,3 +1,6 @@
+import "react-native-gesture-handler";
+
+import { useColorScheme } from "@/hooks/useColorScheme";
 import {
   DarkTheme,
   DefaultTheme,
@@ -8,16 +11,13 @@ import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
-
-// Gesture Handler を先に import する必要があります
-import "react-native-gesture-handler";
+import { setNativeExceptionHandler } from "react-native-exception-handler";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-// Drawerに必要な Reanimated
-import "react-native-reanimated";
-
-import { useColorScheme } from "@/hooks/useColorScheme";
 import { Provider as PaperProvider } from "react-native-paper";
+import "react-native-reanimated";
 import { AuthProvider, useAuth } from "../contexts/AuthContext";
+
+setNativeExceptionHandler((exceptionString) => {});
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
