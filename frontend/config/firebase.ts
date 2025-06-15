@@ -1,28 +1,8 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { getApp, getApps, initializeApp } from "firebase/app";
-import {
-  getReactNativePersistence,
-  initializeAuth,
-  onAuthStateChanged,
-  signInAnonymously,
-  signOut,
-} from "firebase/auth";
-import {
-  collection,
-  deleteDoc,
-  doc,
-  getDoc,
-  getDocs,
-  getFirestore,
-  query,
-  serverTimestamp,
-  setDoc,
-  updateDoc,
-  where,
-  writeBatch,
-} from "firebase/firestore";
-import { getFunctions, httpsCallable } from "firebase/functions";
-import { getStorage } from "firebase/storage";
+import firebase from "@react-native-firebase/app";
+import firebaseAuth from "@react-native-firebase/auth";
+import firebaseFirestore from "@react-native-firebase/firestore";
+import firebaseFunctions from "@react-native-firebase/functions";
+import firebaseStorage from "@react-native-firebase/storage";
 
 // Firebaseの設定
 // 注意: 実際の値はプロジェクト設定から取得してください
@@ -36,20 +16,21 @@ const firebaseConfig = {
 };
 
 // Firebaseアプリを初期化
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-const functions = getFunctions(app);
-const storage = getStorage(app);
+if (!firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+}
 
-// Firestoreを初期化
-const db = getFirestore(app, "(default)");
-const auth = initializeAuth(app, {
-  persistence: getReactNativePersistence(AsyncStorage),
-});
+// サービスインスタンスを取得
+const auth = firebaseAuth();
+const db = firebaseFirestore();
+const functions = firebaseFunctions();
+const storage = firebaseStorage();
+const app = firebase.app();
 
 // 匿名サインイン関数
 const signInAnonymousUser = async () => {
   try {
-    const userCredential = await signInAnonymously(auth);
+    const userCredential = await auth.signInAnonymously();
     return userCredential.user;
   } catch (error) {
     console.error("匿名認証エラー:", error);
@@ -60,7 +41,7 @@ const signInAnonymousUser = async () => {
 // サインアウト関数
 const signOutUser = async () => {
   try {
-    await signOut(auth);
+    await auth.signOut();
   } catch (error) {
     console.error("サインアウトエラー:", error);
     throw error;
@@ -73,27 +54,52 @@ const callFunction = async <T = any, R = any>(
   data: T
 ): Promise<R> => {
   try {
-    const functionRef = httpsCallable<T, R>(functions, functionName);
-    const result = await functionRef(data);
-    return result.data;
+    const result = await functions.httpsCallable(functionName)(data);
+    return result.data as R;
   } catch (error) {
     console.error(`Firebase Function '${functionName}' 呼び出しエラー:`, error);
     throw error;
   }
 };
 
+// 従来のコードとのインターフェース互換性のために、必要な関数をエクスポート
+const collection = (collectionPath: string) => db.collection(collectionPath);
+const doc = (path: string, ...pathSegments: string[]) => {
+  if (pathSegments.length === 0) {
+    return db.doc(path);
+  }
+  return db.collection(path).doc(pathSegments[0]);
+};
+const query = (collectionRef: any, ...queryConstraints: any[]) => {
+  let q = collectionRef;
+  queryConstraints.forEach((constraint) => {
+    q = q.where(constraint.fieldPath, constraint.op, constraint.value);
+  });
+  return q;
+};
+const serverTimestamp = () => firebaseFirestore.FieldValue.serverTimestamp();
+const setDoc = async (docRef: any, data: any) => await docRef.set(data);
+const updateDoc = async (docRef: any, data: any) => await docRef.update(data);
+const deleteDoc = async (docRef: any) => await docRef.delete();
+const writeBatch = () => db.batch();
+const onAuthStateChanged = (callback: any) => auth.onAuthStateChanged(callback);
+const httpsCallable = functions.httpsCallable;
+
 export {
   app,
   auth,
   callFunction,
+
+  // Firestore exports
   collection,
   db,
   deleteDoc,
   doc,
   functions,
-  getDoc,
-  getDocs,
+  // Functions export
   httpsCallable,
+
+  // Auth exports
   onAuthStateChanged,
   query,
   serverTimestamp,
@@ -102,6 +108,5 @@ export {
   signOutUser,
   storage,
   updateDoc,
-  where,
   writeBatch,
 };

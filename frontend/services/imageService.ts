@@ -1,10 +1,4 @@
 import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
-import {
-  deleteObject,
-  getDownloadURL,
-  ref,
-  uploadBytes,
-} from "firebase/storage";
 import ImagePicker from "react-native-image-crop-picker";
 import { auth, storage } from "../config/firebase";
 
@@ -84,13 +78,13 @@ const uploadImageToStorage = async (
     const blob = await dataURItoBlob(processedImage.uri);
 
     // Firebase Storageのリファレンスを作成
-    const storageRef = ref(storage, path);
+    const storageRef = storage.ref(path);
 
     // 画像をアップロード
-    const snapshot = await uploadBytes(storageRef, blob);
+    await storageRef.putFile(processedImage.uri);
 
     // ダウンロードURLを取得
-    const downloadUrl = await getDownloadURL(snapshot.ref);
+    const downloadUrl = await storageRef.getDownloadURL();
 
     return downloadUrl;
   } catch (error) {
@@ -191,8 +185,8 @@ const deleteImage = async (url: string): Promise<void> => {
       throw new Error("画像パスの取得に失敗しました");
     }
 
-    const imageRef = ref(storage, path);
-    await deleteObject(imageRef);
+    const imageRef = storage.ref(path);
+    await imageRef.delete();
     console.log("画像を削除しました:", path);
   } catch (error) {
     console.error("画像削除エラー:", error);

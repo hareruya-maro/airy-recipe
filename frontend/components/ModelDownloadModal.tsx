@@ -1,9 +1,18 @@
 import React, { useEffect } from "react";
 import { StyleSheet, View } from "react-native";
-import { Button, Modal, Portal, ProgressBar, Text } from "react-native-paper";
+import {
+  Button,
+  MD3Theme,
+  Modal,
+  Portal,
+  ProgressBar,
+  Text,
+  useTheme,
+} from "react-native-paper";
 import { MODEL_NAME, useModelStore } from "../store/modelStore";
 
 export const ModelDownloadModal = () => {
+  const styles = makeStyle(useTheme());
   const {
     isModelDownloadModalVisible,
     isModelDownloading,
@@ -45,7 +54,7 @@ export const ModelDownloadModal = () => {
         <View style={styles.modelInfo}>
           <Text style={styles.modelName}>モデル: {MODEL_NAME}</Text>
           {!isModelDownloading && (
-            <Text style={styles.modelSize}>サイズ: 約150MB</Text>
+            <Text style={styles.modelSize}>サイズ: 約3GB</Text>
           )}
         </View>
 
@@ -82,57 +91,58 @@ export const ModelDownloadModal = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  containerStyle: {
-    backgroundColor: "white",
-    padding: 20,
-    margin: 20,
-    borderRadius: 10,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: "bold",
-    textAlign: "center",
-    marginBottom: 16,
-  },
-  description: {
-    marginBottom: 16,
-    lineHeight: 20,
-  },
-  modelInfo: {
-    marginBottom: 20,
-    backgroundColor: "#f5f5f5",
-    padding: 10,
-    borderRadius: 5,
-  },
-  modelName: {
-    fontWeight: "bold",
-  },
-  modelSize: {
-    marginTop: 4,
-    color: "#666",
-  },
-  progressBar: {
-    height: 8,
-    borderRadius: 4,
-    marginVertical: 10,
-  },
-  progressText: {
-    textAlign: "center",
-    marginBottom: 15,
-  },
-  downloadButton: {
-    marginTop: 10,
-  },
-  cancelButton: {
-    marginTop: 10,
-    backgroundColor: "#D32F2F",
-  },
-  message: {
-    marginTop: 16,
-    padding: 8,
-    backgroundColor: "#E0E0E0",
-    borderRadius: 4,
-    textAlign: "center",
-  },
-});
+const makeStyle = (theme: MD3Theme) =>
+  StyleSheet.create({
+    containerStyle: {
+      backgroundColor: theme.colors.surface,
+      padding: 20,
+      margin: 20,
+      borderRadius: 10,
+    },
+    title: {
+      fontSize: 18,
+      fontWeight: "bold",
+      textAlign: "center",
+      marginBottom: 16,
+    },
+    description: {
+      marginBottom: 16,
+      lineHeight: 20,
+    },
+    modelInfo: {
+      marginBottom: 20,
+      backgroundColor: theme.colors.secondaryContainer,
+      padding: 10,
+      borderRadius: 5,
+    },
+    modelName: {
+      fontWeight: "bold",
+    },
+    modelSize: {
+      marginTop: 4,
+      color: theme.colors.onSecondaryContainer,
+    },
+    progressBar: {
+      height: 8,
+      borderRadius: 4,
+      marginVertical: 10,
+    },
+    progressText: {
+      textAlign: "center",
+      marginBottom: 15,
+    },
+    downloadButton: {
+      marginTop: 10,
+    },
+    cancelButton: {
+      marginTop: 10,
+      backgroundColor: "#D32F2F",
+    },
+    message: {
+      marginTop: 16,
+      padding: 8,
+      backgroundColor: "#E0E0E0",
+      borderRadius: 4,
+      textAlign: "center",
+    },
+  });

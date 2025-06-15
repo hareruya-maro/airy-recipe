@@ -1,6 +1,5 @@
 import "react-native-get-random-values";
 
-import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { useState } from "react";
 import { useWindowDimensions } from "react-native";
 import ImagePicker from "react-native-image-crop-picker";
@@ -186,13 +185,13 @@ export const useImageUpload = () => {
         const blob = await response.blob();
 
         // FirebaseのStorageリファレンスを作成
-        const imageRef = ref(storage, `${folder}/image_${index}.jpg`);
+        const imageRef = storage.ref(`${folder}/image_${index}.jpg`);
 
         // 画像をアップロード
-        await uploadBytes(imageRef, blob);
+        await imageRef.putFile(image.uri);
 
         // ダウンロードURLを取得
-        const downloadUrl = await getDownloadURL(imageRef);
+        const downloadUrl = await imageRef.getDownloadURL();
 
         // 完了したステータスを更新
         setImages((prev) =>

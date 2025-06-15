@@ -4,7 +4,6 @@ import Voice, {
 } from "@react-native-voice/voice";
 import ExpoLlmMediapipe from "expo-llm-mediapipe"; // Gemma 3モデルを使うためのライブラリ
 import * as Speech from "expo-speech"; // TTSのためのexpo-speechをインポート
-import { httpsCallable } from "firebase/functions";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { functions } from "../config/firebase";
 import { useRecipeStore } from "../store/recipeStore";
@@ -157,8 +156,7 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
   };
 
   // Firebase Functionsのプロセス関数
-  const processVoiceCommandFunction = httpsCallable(
-    functions,
+  const processVoiceCommandFunction = functions.httpsCallable(
     "processVoiceCommand"
   );
 

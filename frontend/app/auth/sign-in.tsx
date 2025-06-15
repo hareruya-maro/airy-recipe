@@ -1,4 +1,3 @@
-import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -16,7 +15,6 @@ import { useAuth } from "../../contexts/AuthContext";
 export default function SignInScreen() {
   const { signIn } = useAuth();
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
 
   // 匿名認証処理
   const handleSignIn = async () => {

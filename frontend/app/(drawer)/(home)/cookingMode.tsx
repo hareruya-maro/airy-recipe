@@ -2,6 +2,7 @@ import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import { LinearGradient } from "expo-linear-gradient";
 import ExpoLlmMediapipe from "expo-llm-mediapipe";
 import { router } from "expo-router";
+import { StatusBar } from "expo-status-bar";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { FlatList, SafeAreaView, StyleSheet, View } from "react-native";
 import { Appbar, Button, Portal, Surface, Text } from "react-native-paper";
@@ -430,6 +431,18 @@ Reply with ONLY the category name from above. For example: "play", "pause", etc.
     }
   };
 
+  // グラデーションの色を定義
+  const normalGradientColors: readonly [string, string, string] = [
+    "#0a1433",
+    "#051036",
+    "#000428",
+  ]; // 通常時の濃紺グラデーション
+  const listeningGradientColors: readonly [string, string, string] = [
+    "#4a1042",
+    "#7a1155",
+    "#a01c65",
+  ]; // 音声操作時のピンク/紫グラデーション
+
   if (!currentRecipe) {
     return (
       <LinearGradient
@@ -448,94 +461,107 @@ Reply with ONLY the category name from above. For example: "play", "pause", etc.
 
   return (
     <Portal.Host>
-      <View style={{ flex: 1 }}>
-        {/* バックグラウンドのフローグラデーション */}
-        {/* <FlowingGradient ref={flowingGradientRef} /> */}
+      <StatusBar style="light" />
+      <LinearGradient
+        colors={isListening ? listeningGradientColors : normalGradientColors}
+        style={styles.gradientContainer}
+      >
+        <View style={{ flex: 1 }}>
+          <Appbar.Header style={styles.transparentHeader}>
+            <Appbar.Content
+              title={currentRecipe.title}
+              titleStyle={styles.headerTitle}
+            />
+            <Appbar.Action icon="close" color="#fff" onPress={handleClose} />
+          </Appbar.Header>
 
-        <Appbar.Header style={styles.transparentHeader}>
-          <Appbar.Content
-            title={currentRecipe.title}
-            titleStyle={styles.headerTitle}
+          {/* 音声認識状態インジケーター - 音声認識中のみ表示 */}
+          {isListening && (
+            <View style={styles.listeningIndicator}>
+              <Text style={styles.listeningText}>音声操作モード</Text>
+            </View>
+          )}
+
+          {/* 単一のFlatListでコンテンツを表示 */}
+          <FlatList
+            ref={flatListRef}
+            data={getSectionData()}
+            renderItem={renderSectionItem}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.content}
           />
-          <Appbar.Action icon="close" color="#fff" onPress={handleClose} />
-        </Appbar.Header>
 
-        {/* 単一のFlatListでコンテンツを表示 */}
-        <FlatList
-          ref={flatListRef}
-          data={getSectionData()}
-          renderItem={renderSectionItem}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.content}
-        />
+          {/* 音声読み上げ中のダイアログ表示（パルスアニメーション付き） */}
+          <PulsingDialog
+            visible={isDialogVisible && lastAIResponse !== null}
+            title="AIry Recipe"
+            message={lastAIResponse}
+            isLoading={isSpeaking}
+            minOpacity={0.8}
+            maxOpacity={1.0}
+            pulseDuration={1000}
+          />
 
-        {/* 音声読み上げ中のダイアログ表示（パルスアニメーション付き） */}
-        <PulsingDialog
-          visible={isDialogVisible && lastAIResponse !== null}
-          title="AIry Recipe"
-          message={lastAIResponse}
-          isLoading={isSpeaking}
-          minOpacity={0.8}
-          maxOpacity={1.0}
-          pulseDuration={1000}
-        />
+          {/* ボタン配置エリア */}
+          <View style={[styles.buttonsContainer, { bottom: bottom + 8 }]}>
+            {/* 音声操作ボタン（左側） */}
+            <Button
+              mode={isListening ? "contained" : "contained-tonal"}
+              onPress={toggleVoiceRecognition}
+              onLongPress={toggleTextInputModal} // 長押しでテキスト入力モーダルを表示
+              style={[
+                styles.actionButton,
+                isListening && styles.listeningButton,
+              ]}
+              icon={isListening ? "ear-hearing" : "microphone"}
+              contentStyle={styles.actionButtonContent}
+              delayLongPress={500} // 長押し認識の遅延時間（ミリ秒）
+            >
+              {isListening ? "聞いています..." : "音声操作"}
+            </Button>
 
-        {/* ボタン配置エリア */}
-        <View style={[styles.buttonsContainer, { bottom: bottom + 8 }]}>
-          {/* 音声操作ボタン（左側） */}
-          <Button
-            mode={isListening ? "contained" : "contained-tonal"}
-            onPress={toggleVoiceRecognition}
-            onLongPress={toggleTextInputModal} // 長押しでテキスト入力モーダルを表示
-            style={[styles.actionButton, isListening && styles.listeningButton]}
-            icon={isListening ? "ear-hearing" : "microphone"}
-            contentStyle={styles.actionButtonContent}
-            delayLongPress={500} // 長押し認識の遅延時間（ミリ秒）
-          >
-            {isListening ? "聞いています..." : "音声操作"}
-          </Button>
+            <Button
+              mode={"contained-tonal"}
+              onPress={showManualTimerDialogVisible}
+              style={[styles.actionButton]}
+              icon={"alarm"}
+              contentStyle={styles.actionButtonContent}
+            >
+              タイマー
+            </Button>
 
-          <Button
-            mode={"contained-tonal"}
-            onPress={showManualTimerDialogVisible}
-            style={[styles.actionButton]}
-            icon={"alarm"}
-            contentStyle={styles.actionButtonContent}
-          >
-            タイマー
-          </Button>
+            {/* 材料表示ボタン（右側） */}
+            <Button
+              mode="contained-tonal"
+              onPress={() => handleToggleIngredients()}
+              style={styles.actionButton}
+              icon="format-list-bulleted"
+              contentStyle={styles.actionButtonContent}
+            >
+              {showIngredients ? "手順" : "材料"}
+            </Button>
+          </View>
 
-          {/* 材料表示ボタン（右側） */}
-          <Button
-            mode="contained-tonal"
-            onPress={() => handleToggleIngredients()}
-            style={styles.actionButton}
-            icon="format-list-bulleted"
-            contentStyle={styles.actionButtonContent}
-          >
-            {showIngredients ? "手順" : "材料"}
-          </Button>
+          {/* テキスト入力モーダル */}
+          <TextInputModal
+            visible={isTextInputModalVisible}
+            onDismiss={() => setTextInputModalVisible(false)}
+            onSubmit={handleTextInputSubmit}
+            title="音声コマンドをテスト"
+            placeholder="ウェイクワード（アイリ等）から始めるコマンドを入力してください"
+            submitLabel="送信"
+            cancelLabel="キャンセル"
+          />
+
+          {/* YouTube動画モーダル */}
+          <VideoModal
+            ref={videoModalRef}
+            visible={isVideoModalVisible}
+            onClose={closeVideoModal}
+            videoUrl={currentVideoUrl}
+          />
         </View>
-
-        {/* テキスト入力モーダル */}
-        <TextInputModal
-          visible={isTextInputModalVisible}
-          onDismiss={() => setTextInputModalVisible(false)}
-          onSubmit={handleTextInputSubmit}
-          title="音声コマンドをテスト"
-          placeholder="ウェイクワード（アイリ等）から始めるコマンドを入力してください"
-          submitLabel="送信"
-          cancelLabel="キャンセル"
-        />
-
-        {/* YouTube動画モーダル */}
-        <VideoModal
-          ref={videoModalRef}
-          visible={isVideoModalVisible}
-          onClose={closeVideoModal}
-          videoUrl={currentVideoUrl}
-        />
-      </View>
+      </LinearGradient>
     </Portal.Host>
   );
 }
@@ -543,6 +569,8 @@ Reply with ONLY the category name from above. For example: "play", "pause", etc.
 const styles = StyleSheet.create({
   gradientContainer: {
     flex: 1,
+    width: "100%",
+    height: "100%",
   },
   containerTransparent: {
     flex: 1,
@@ -646,6 +674,23 @@ const styles = StyleSheet.create({
   messageText: {
     fontSize: 16,
     marginTop: 4,
+    color: "#fff", // テキストを白色に変更して背景に対して読みやすく
+  },
+  // 音声操作モードインジケーター
+  listeningIndicator: {
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    padding: 8,
+    borderRadius: 16,
+    margin: 8,
+    alignSelf: "center",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  listeningText: {
+    color: "#fff",
+    fontWeight: "bold",
   },
   // スタイル終了
 });

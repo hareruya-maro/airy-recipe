@@ -386,8 +386,8 @@ export default function EditRecipeScreen() {
     const recipeUpdate: RecipeUpdate = {
       title,
       description,
-      prepTime: prepTimeNum,
-      cookTime: cookTimeNum,
+      prepTime: prepTimeNum.toString(),
+      cookTime: cookTimeNum.toString(),
       servings: servingsNum,
       difficulty,
       tags,

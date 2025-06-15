@@ -1,11 +1,6 @@
 import "react-native-gesture-handler";
 
 import { useColorScheme } from "@/hooks/useColorScheme";
-import {
-  DarkTheme,
-  DefaultTheme,
-  ThemeProvider,
-} from "@react-navigation/native";
 import { useFonts } from "expo-font";
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -65,30 +60,26 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AuthProvider>
         <PaperProvider>
-          <ThemeProvider
-            value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
-          >
-            <Stack>
-              <Stack.Screen
-                name="(drawer)"
-                options={{
-                  headerShown: false,
-                  // ドロワーの場合はアニメーションを変更
-                  animation: "none",
-                }}
-              />
-              <Stack.Screen name="+not-found" />
-              <Stack.Screen
-                name="auth/sign-in"
-                options={{
-                  headerShown: false,
-                  animation: "fade",
-                }}
-              />
-            </Stack>
-            <AuthRoute />
-            <StatusBar style="auto" />
-          </ThemeProvider>
+          <Stack>
+            <Stack.Screen
+              name="(drawer)"
+              options={{
+                headerShown: false,
+                // ドロワーの場合はアニメーションを変更
+                animation: "none",
+              }}
+            />
+            <Stack.Screen name="+not-found" />
+            <Stack.Screen
+              name="auth/sign-in"
+              options={{
+                headerShown: false,
+                animation: "fade",
+              }}
+            />
+          </Stack>
+          <AuthRoute />
+          <StatusBar style="auto" />
         </PaperProvider>
       </AuthProvider>
     </GestureHandlerRootView>

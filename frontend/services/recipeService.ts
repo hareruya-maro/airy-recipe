@@ -1,15 +1,16 @@
-import { or } from "firebase/firestore";
+// orクエリは@react-native-firebase/firestoreから提供されます
 import {
   collection,
-  db,
   doc,
   getDoc,
   getDocs,
+  or,
   query,
   serverTimestamp,
   where,
   writeBatch,
-} from "../config/firebase";
+} from "@react-native-firebase/firestore";
+import { db } from "../config/firebase";
 
 // Firestoreのレシピドキュメントの型定義
 export interface Recipe {

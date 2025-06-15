@@ -1,4 +1,4 @@
-import { onAuthStateChanged, User } from "firebase/auth";
+import { FirebaseAuthTypes } from "@react-native-firebase/auth";
 import React, {
   createContext,
   ReactNode,
@@ -10,9 +10,9 @@ import { auth, signInAnonymousUser, signOutUser } from "../config/firebase";
 
 // 認証コンテキストの型定義
 interface AuthContextType {
-  currentUser: User | null;
+  currentUser: FirebaseAuthTypes.User | null;
   loading: boolean;
-  signIn: () => Promise<User | null>;
+  signIn: () => Promise<FirebaseAuthTypes.User | null>;
   logout: () => Promise<void>;
 }
 
@@ -31,7 +31,9 @@ interface AuthProviderProps {
 
 // 認証プロバイダーコンポーネント
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<FirebaseAuthTypes.User | null>(
+    null
+  );
   const [loading, setLoading] = useState(true);
 
   // 匿名認証
@@ -52,7 +54,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // 認証状態の監視
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
       setCurrentUser(user);
       setLoading(false);
     });

@@ -7,9 +7,10 @@
     "icon": "./assets/images/icon.png",
     "scheme": "airyrecipe",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "ios": {
       "supportsTablet": true,
+      "googleServicesFile": "./GoogleService-Info.plist",
       "bundleIdentifier": "com.apps.hal.airyrecipe",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
@@ -20,7 +21,11 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.apps.hal.airyrecipe"
+      "package": "com.apps.hal.airyrecipe",
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -46,9 +51,23 @@
         }
       ],
       [
-        "expo-apple-authentication"
+        "expo-image-picker",
+        {
+          "photosPermission": "The app accesses your photos to let you share them with your friends.",
+          "cameraPermission": "The app accesses your camera to let you take photos and videos."
+        }
       ],
-      "expo-llm-mediapipe"
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static"
+          }
+        }
+      ],
+      "expo-llm-mediapipe",
+      "@react-native-firebase/app",
+      "@react-native-firebase/auth"
     ],
     "experiments": {
       "typedRoutes": true
@@ -60,6 +79,12 @@
       "eas": {
         "projectId": "b46af397-2422-4d34-9ad5-243b458a70e6"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/b46af397-2422-4d34-9ad5-243b458a70e6"
     }
   }
 }

@@ -9,7 +9,14 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Appbar, Card, Portal, Snackbar, Text } from "react-native-paper";
+import {
+  Appbar,
+  Card,
+  Portal,
+  Snackbar,
+  Text,
+  useTheme,
+} from "react-native-paper";
 import { ModelDownloadModal } from "../../../components/ModelDownloadModal";
 import { MODEL_NAME, useModelStore } from "../../../store/modelStore";
 import { Recipe, useRecipeStore } from "../../../store/recipeStore";
@@ -50,6 +57,7 @@ const formatDate = (timestamp: any): string => {
 };
 
 export default function HomeScreen() {
+  const { colors } = useTheme();
   const { recipes, fetchRecipes, isLoadingRecipes } = useRecipeStore();
   const {
     checkIfModelDownloaded,
@@ -225,7 +233,7 @@ Reply with ONLY the category name from above. For example: "play", "pause", etc.
           renderItem={renderRecipeCard}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.recipeList}
-          style={{ flex: 1 }}
+          style={{ flex: 1, backgroundColor: colors.background }}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
