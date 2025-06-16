@@ -1,7 +1,7 @@
+import { Ingredient } from "@/store/recipeTypes";
 import React from "react";
-import { FlatList, StyleSheet } from "react-native";
+import { FlatList, StyleSheet, View } from "react-native";
 import { List, Surface, Text } from "react-native-paper";
-import { Ingredient } from "../../store/recipeStore";
 
 type IngredientsListProps = {
   ingredients: Ingredient[];
@@ -11,23 +11,25 @@ export const IngredientsList: React.FC<IngredientsListProps> = ({
   ingredients,
 }) => {
   return (
-    <Surface style={styles.container} elevation={1}>
-      <Text variant="titleLarge" style={styles.title}>
-        材料
-      </Text>
-      <FlatList
-        data={ingredients}
-        keyExtractor={(item, index) => `ingredient-${index}`}
-        renderItem={({ item }) => (
-          <List.Item
-            title={item.name}
-            right={() => <Text style={styles.amount}>{item.amount}</Text>}
-            style={styles.item}
-          />
-        )}
-        scrollEnabled={false}
-      />
-    </Surface>
+    <View style={{ overflow: "hidden" }}>
+      <Surface style={styles.container} elevation={1}>
+        <Text variant="titleLarge" style={styles.title}>
+          材料
+        </Text>
+        <FlatList
+          data={ingredients}
+          keyExtractor={(item, index) => `ingredient-${index}`}
+          renderItem={({ item }) => (
+            <List.Item
+              title={item.name}
+              right={() => <Text style={styles.amount}>{item.amount}</Text>}
+              style={styles.item}
+            />
+          )}
+          scrollEnabled={false}
+        />
+      </Surface>
+    </View>
   );
 };
 

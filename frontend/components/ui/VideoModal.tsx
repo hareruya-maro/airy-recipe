@@ -253,7 +253,7 @@ const styles = StyleSheet.create({
   videoPlayerContainer: {
     width: "100%",
     borderRadius: 8,
-    overflow: "hidden",
+    // overflow: "hidden",
     marginBottom: 12,
     alignItems: "center",
     justifyContent: "center",

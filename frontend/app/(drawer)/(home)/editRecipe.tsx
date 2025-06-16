@@ -680,33 +680,36 @@ export default function EditRecipeScreen() {
                 />
 
                 {/* 手順画像 */}
-                <TouchableOpacity
-                  style={styles.stepImageContainer}
-                  onPress={() => showImagePicker("step", index)}
-                  disabled={isUploading}
-                >
-                  {step.image ? (
-                    <View style={styles.stepImageWrapper}>
-                      <Image
-                        source={{ uri: step.image }}
-                        style={styles.stepImage}
-                        resizeMode="cover"
-                      />
-                      <IconButton
-                        icon="pencil"
-                        size={20}
-                        style={styles.editImageIcon}
-                        iconColor={theme.colors.onPrimary}
-                        containerColor={theme.colors.primary}
-                      />
-                    </View>
-                  ) : (
-                    <View style={styles.stepImagePlaceholder}>
-                      <IconButton icon="camera-plus" size={24} />
-                      <Text style={styles.stepImageText}>画像を追加</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
+
+                <View style={{ overflow: "hidden" }}>
+                  <TouchableOpacity
+                    style={styles.stepImageContainer}
+                    onPress={() => showImagePicker("step", index)}
+                    disabled={isUploading}
+                  >
+                    {step.image ? (
+                      <View style={styles.stepImageWrapper}>
+                        <Image
+                          source={{ uri: step.image }}
+                          style={styles.stepImage}
+                          resizeMode="cover"
+                        />
+                        <IconButton
+                          icon="pencil"
+                          size={20}
+                          style={styles.editImageIcon}
+                          iconColor={theme.colors.onPrimary}
+                          containerColor={theme.colors.primary}
+                        />
+                      </View>
+                    ) : (
+                      <View style={styles.stepImagePlaceholder}>
+                        <IconButton icon="camera-plus" size={24} />
+                        <Text style={styles.stepImageText}>画像を追加</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                </View>
               </View>
             ))}
 
@@ -928,7 +931,6 @@ const styles = StyleSheet.create({
     width: "100%",
     height: 200,
     borderRadius: 8,
-    overflow: "hidden",
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#e0e0e0",
@@ -948,7 +950,6 @@ const styles = StyleSheet.create({
     width: "100%",
     height: 150,
     borderRadius: 8,
-    overflow: "hidden",
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#f0f0f0",

@@ -1,8 +1,8 @@
+import { Step } from "@/store/recipeTypes";
 import { Image } from "expo-image";
 import React, { useState } from "react";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
 import { Button, Card, Surface, Text } from "react-native-paper";
-import { Step } from "../../store/recipeStore";
 import { ImageViewerModal } from "./ImageViewerModal";
 
 type StepsListProps = {
@@ -88,47 +88,49 @@ export const StepsList: React.FC<StepsListProps> = ({
 
   // 通常モード: 全ステップをリスト表示
   return (
-    <Surface style={styles.container} elevation={1}>
-      <Text variant="titleLarge" style={styles.title}>
-        手順
-      </Text>
-      {steps.map((step, index) => (
-        <Card
-          key={`step-${index}`}
-          style={[
-            styles.stepCard,
-            currentStepIndex === index && styles.currentStepCard,
-          ]}
-        >
-          <Card.Content>
-            <Text style={styles.stepNumber}>ステップ {index + 1}</Text>
+    <View style={{ overflow: "hidden" }}>
+      <Surface style={styles.container} elevation={1}>
+        <Text variant="titleLarge" style={styles.title}>
+          手順
+        </Text>
+        {steps.map((step, index) => (
+          <Card
+            key={`step-${index}`}
+            style={[
+              styles.stepCard,
+              currentStepIndex === index && styles.currentStepCard,
+            ]}
+          >
+            <Card.Content>
+              <Text style={styles.stepNumber}>ステップ {index + 1}</Text>
 
-            {step.image && (
-              <TouchableOpacity
-                onPress={() => handleImagePress(step.image!)}
-                style={styles.thumbnailContainer}
-              >
-                <Image
-                  source={{ uri: step.image }}
-                  style={styles.thumbnailImage}
-                  resizeMode="cover"
-                />
-              </TouchableOpacity>
-            )}
+              {step.image && (
+                <TouchableOpacity
+                  onPress={() => handleImagePress(step.image!)}
+                  style={styles.thumbnailContainer}
+                >
+                  <Image
+                    source={{ uri: step.image }}
+                    style={styles.thumbnailImage}
+                    resizeMode="cover"
+                  />
+                </TouchableOpacity>
+              )}
 
-            <Text style={styles.stepText}>{step.description}</Text>
-          </Card.Content>
-        </Card>
-      ))}
+              <Text style={styles.stepText}>{step.description}</Text>
+            </Card.Content>
+          </Card>
+        ))}
 
-      {selectedImage && (
-        <ImageViewerModal
-          imageUri={selectedImage}
-          isVisible={!!selectedImage}
-          onClose={handleCloseModal}
-        />
-      )}
-    </Surface>
+        {selectedImage && (
+          <ImageViewerModal
+            imageUri={selectedImage}
+            isVisible={!!selectedImage}
+            onClose={handleCloseModal}
+          />
+        )}
+      </Surface>
+    </View>
   );
 };
 
@@ -136,7 +138,6 @@ const styles = StyleSheet.create({
   container: {
     margin: 16,
     borderRadius: 8,
-    overflow: "hidden",
     padding: 16,
   },
   title: {

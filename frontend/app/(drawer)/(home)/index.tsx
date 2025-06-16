@@ -135,7 +135,10 @@ export default function HomeScreen() {
 
   // レシピカードの描画
   const renderRecipeCard = ({ item }: { item: Recipe }) => (
-    <TouchableOpacity onPress={() => handleRecipeSelect(item)}>
+    <TouchableOpacity
+      onPress={() => handleRecipeSelect(item)}
+      style={{ overflow: "hidden" }}
+    >
       <Card style={styles.card} mode="elevated">
         <Card.Cover source={{ uri: item.image }} style={styles.cardImage} />
         <Card.Content style={styles.cardContent}>
@@ -244,7 +247,6 @@ const styles = StyleSheet.create({
   },
   card: {
     marginBottom: 16,
-    overflow: "hidden",
   },
   cardImage: {
     height: 180,

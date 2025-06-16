@@ -215,11 +215,6 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
     alignItems: "center",
   },
-  timerButtonContainer: {
-    marginVertical: 8,
-    borderRadius: 16,
-    overflow: "hidden",
-  },
   timerButton: {
     borderRadius: 16,
   },
