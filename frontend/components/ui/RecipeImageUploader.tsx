@@ -188,8 +188,9 @@ export const RecipeImageUploader = ({
       {images.length === 0 && (
         <View style={styles.emptyStateContainer}>
           <Text style={styles.emptyStateText}>
-            レシピの画像を追加してください。
+            レシピの画像を追加してください。{"\n"}
             複数枚の画像をアップロードして1つのレシピとして処理することができます。
+            {"\n\n"}
             下のボタンから写真を撮影するか、ギャラリーから選択できます。
           </Text>
 
