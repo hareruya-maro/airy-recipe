@@ -5,9 +5,10 @@ import React from "react";
 
 // リアニメーテッドが必要
 import "react-native-gesture-handler";
-import { Icon } from "react-native-paper";
+import { Icon, useTheme } from "react-native-paper";
 
 export default function DrawerLayout() {
+  const { colors } = useTheme();
   const colorScheme = useColorScheme();
   const tintColor = Colors[colorScheme ?? "light"].tint;
 
@@ -15,8 +16,13 @@ export default function DrawerLayout() {
     <Drawer
       screenOptions={{
         headerShown: false,
-        headerTintColor: tintColor,
-        drawerActiveTintColor: tintColor,
+        headerTintColor: colors.primary,
+        drawerActiveTintColor: colors.primary,
+        drawerActiveBackgroundColor: colors.primaryContainer,
+        drawerInactiveBackgroundColor: colors.surface,
+        headerBackgroundContainerStyle: {
+          backgroundColor: colors.surface,
+        },
       }}
     >
       <Drawer.Screen
@@ -25,7 +31,7 @@ export default function DrawerLayout() {
           title: "ホーム",
           drawerLabel: "ホーム",
           drawerIcon: ({ color }) => (
-            <Icon size={24} source="house" color={color} />
+            <Icon size={24} source="home" color={color} />
           ),
           swipeEnabled: false,
         }}
