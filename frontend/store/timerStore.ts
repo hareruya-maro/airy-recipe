@@ -86,37 +86,58 @@ export const useTimerStore = create<TimerState>((set, get) => ({
       else if (seconds === 0) message = "タイマーが終了しました";
 
       if (message) {
-        // 終了時のみ音を鳴らす（5回繰り返し）
+        // 終了時のみ音を鳴らす
         if (seconds === 0) {
           console.log("タイマー終了音を再生します");
-          const { sound } = await Audio.Sound.createAsync(
-            require("../assets/sounds/ringtone_loop.wav")
-          );
+          try {
+            // オーディオモードを設定
+            await Audio.setAudioModeAsync({
+              playsInSilentModeIOS: true, // サイレントモードでも再生
+              staysActiveInBackground: true, // バックグラウンドでも再生を続行
+              shouldDuckAndroid: true, // 他の音声を一時的に小さくする
+            });
 
-          // 5回再生を設定
-          let playCount = 0;
-          const playSound = async () => {
-            if (playCount < 5) {
-              await sound.playAsync();
+            // サウンドロード
+            const soundObject = new Audio.Sound();
+            await soundObject.loadAsync(
+              require("../assets/sounds/ringtone_loop.wav")
+            );
 
-              // 再生終了イベントにリスナーを設定
-              sound.setOnPlaybackStatusUpdate(async (status) => {
-                if (status.isLoaded) {
-                  playCount++;
-                  if (playCount < 5) {
-                    // 再度再生
-                    await sound.replayAsync();
-                  } else {
-                    // 5回再生完了後に解放
-                    await sound.unloadAsync();
-                  }
-                }
-              });
-            }
-          };
+            // 最大音量で再生
+            await soundObject.setIsMutedAsync(false);
+            await soundObject.setVolumeAsync(1.0);
 
-          // 最初の再生を開始
-          await playSound();
+            // 最初の再生
+            await soundObject.playAsync();
+            console.log("再生開始しました");
+
+            // タイマーで複数回再生（代替手段として使用）
+            let playCount = 1;
+            const maxPlays = 5;
+
+            const playInterval = setInterval(async () => {
+              if (playCount >= maxPlays) {
+                clearInterval(playInterval);
+                await soundObject.unloadAsync();
+                console.log("サウンド再生完了・解放しました");
+                return;
+              }
+
+              playCount++;
+              try {
+                await soundObject.replayAsync();
+                console.log(`${playCount}回目の再生です`);
+              } catch (err) {
+                console.error("リプレイエラー:", err);
+                clearInterval(playInterval);
+                try {
+                  await soundObject.unloadAsync();
+                } catch (e) {}
+              }
+            }, 2500);
+          } catch (error) {
+            console.error("音声再生エラー:", error);
+          }
         } else {
           // 音声読み上げ
           Speech.speak(message, { language: "ja-JP" });

@@ -226,7 +226,10 @@ Reply with ONLY the category name from above. For example: "play", "pause", etc.
         }
       } else {
         // タイマー設定コマンドを処理
-        if (await processVoiceCommand(text, currentStepText, modelHandle)) {
+        if (
+          text.includes("タイマー") &&
+          (await processVoiceCommand(text, currentStepText, modelHandle))
+        ) {
           return true; // 音声コマンドが処理された
         }
       }

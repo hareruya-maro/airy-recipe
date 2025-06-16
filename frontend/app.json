@@ -13,7 +13,10 @@
       "googleServicesFile": "./GoogleService-Info.plist",
       "bundleIdentifier": "com.apps.hal.airyrecipe",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "UIBackgroundModes": [
+          "audio"
+        ]
       }
     },
     "android": {
@@ -34,6 +37,12 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone."
+        }
+      ],
       [
         "expo-splash-screen",
         {
