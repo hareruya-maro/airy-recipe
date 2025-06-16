@@ -10,6 +10,7 @@ import { setNativeExceptionHandler } from "react-native-exception-handler";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { Provider as PaperProvider } from "react-native-paper";
 import "react-native-reanimated";
+import { ModelInitializingIndicator } from "../components/ModelInitializingIndicator";
 import { AuthProvider, useAuth } from "../contexts/AuthContext";
 
 setNativeExceptionHandler((exceptionString) => {});
@@ -80,6 +81,8 @@ export default function RootLayout() {
           </Stack>
           <AuthRoute />
           <StatusBar style="auto" />
+          {/* モデル初期化中のインジケーターを追加 */}
+          <ModelInitializingIndicator />
         </PaperProvider>
       </AuthProvider>
     </GestureHandlerRootView>

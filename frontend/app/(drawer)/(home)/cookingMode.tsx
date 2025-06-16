@@ -15,7 +15,7 @@ import TextInputModal from "../../../components/ui/TextInputModal";
 import { VideoModal, VideoModalRef } from "../../../components/ui/VideoModal";
 import { useTimer } from "../../../hooks/useTimer";
 import { useVoiceRecognition } from "../../../hooks/useVoiceRecognition";
-import { MODEL_NAME } from "../../../store/modelStore";
+import { useModelStore } from "../../../store/modelStore";
 import {
   ConversationMessage,
   useRecipeStore,
@@ -51,8 +51,8 @@ export default function CookingModeScreen() {
   } = useRecipeStore();
 
   const [showIngredients, setShowIngredients] = useState(false);
-  // Gemma 3モデル参照用の状態変数
-  const [modelHandle, setModelHandle] = useState<number | null>(null);
+  // モデルハンドルをStoreから取得
+  const { modelHandle } = useModelStore();
 
   // FlatListのリファレンス
   const flatListRef = useRef<FlatList>(null);
@@ -111,42 +111,16 @@ export default function CookingModeScreen() {
     };
   }, []);
 
-  // Gemma 3モデルをロードする
+  // モデルステータスを確認
   useEffect(() => {
-    // モデルをロード
-    const loadModel = async () => {
-      try {
-        console.log("モデルをロード中...");
-        // モデルをダウンロード済みのモデルからロード
-        const handle = await ExpoLlmMediapipe.createModelFromDownloaded(
-          MODEL_NAME,
-          1024, // maxTokens
-          40, // topK
-          0.7, // temperature
-          42 // seed
-        );
-        setModelHandle(handle);
-        console.log(`モデルがロードされました。ハンドル: ${handle}`);
-      } catch (error) {
-        console.error("モデルのロードに失敗しました:", error);
-      }
-    };
-
-    loadModel();
-
-    // コンポーネントのアンマウント時にモデルを破棄
-    return () => {
-      if (modelHandle !== null) {
-        ExpoLlmMediapipe.releaseModel(modelHandle)
-          .then(() => {
-            console.log("モデルが正常に破棄されました");
-          })
-          .catch((error: Error) => {
-            console.error("モデル破棄エラー:", error);
-          });
-      }
-    };
-  }, []); // 空の依存配列で初回のみ実行
+    if (modelHandle === null) {
+      console.log(
+        "警告: モデルハンドルがnullです。音声機能が正常に動作しない可能性があります。"
+      );
+    } else {
+      console.log(`クッキングモードでモデルハンドルを使用: ${modelHandle}`);
+    }
+  }, [modelHandle]); // モデルハンドルが変更されたときに実行
 
   // 材料リストの表示切替用コールバック
   const handleToggleIngredients = useCallback(

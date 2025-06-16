@@ -97,20 +97,12 @@ export default function HomeScreen() {
       if (!isDownloaded) {
         showDownloadModal();
       } else {
-        console.log("createModelFromDownloadedを実行します");
-        ExpoLlmMediapipe.createModelFromDownloaded(
-          MODEL_NAME,
-          1024, // maxTokens
-          40, // topK
-          0.7, // temperature
-          42
-        )
-          .then((number) => {
-            console.log(`${MODEL_NAME}のモデルが正常に作成されました`);
-          })
-          .catch((error) => {
-            console.error(`モデル作成エラー: ${error.message}`);
-          });
+        // モデルがダウンロード済みの場合、モデルを作成
+        try {
+          await useModelStore.getState().createModel();
+        } catch (error) {
+          console.error("モデル作成エラー:", error);
+        }
       }
     };
 

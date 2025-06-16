@@ -23,6 +23,9 @@ export const ModelDownloadModal = () => {
     hideDownloadModal,
     setupModelDownloadListener,
     removeModelDownloadListener,
+    isModelDownloaded,
+    createModel,
+    isModelInitializing, // モデル初期化状態を取得
   } = useModelStore();
 
   // コンポーネントがマウントされたらダウンロードリスナーをセットアップ
@@ -34,6 +37,24 @@ export const ModelDownloadModal = () => {
       removeModelDownloadListener(listener);
     };
   }, [setupModelDownloadListener, removeModelDownloadListener]);
+
+  // モデルダウンロード完了時にモデルを初期化する
+  useEffect(() => {
+    const initializeModel = async () => {
+      if (isModelDownloaded && !isModelDownloading) {
+        try {
+          console.log(
+            "モデルが正常にダウンロードされました。初期化を開始します。"
+          );
+          await createModel();
+        } catch (error) {
+          console.error("モデル初期化エラー:", error);
+        }
+      }
+    };
+
+    initializeModel();
+  }, [isModelDownloaded, isModelDownloading, createModel]);
 
   return (
     <Portal>
@@ -74,6 +95,11 @@ export const ModelDownloadModal = () => {
             >
               キャンセル
             </Button>
+          </>
+        ) : isModelInitializing ? (
+          <>
+            <ProgressBar indeterminate style={styles.progressBar} />
+            <Text style={styles.progressText}>AIモデルを初期化中...</Text>
           </>
         ) : (
           <Button

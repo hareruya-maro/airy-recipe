@@ -3,6 +3,7 @@ import ExpoLlmMediapipe, {
   DownloadProgressEvent,
   NativeModuleSubscription,
 } from "expo-llm-mediapipe";
+import { LayoutAnimation } from "react-native";
 import { create } from "zustand";
 
 // モデルのURL（実際のプロジェクトのモデルURLに置き換えてください）
@@ -17,6 +18,9 @@ type ModelState = {
   isModelDownloadModalVisible: boolean;
   isModelDownloaded: boolean;
   lastMessage: string;
+  modelHandle: number | null; // モデルハンドルを追加
+  isModelInitializing: boolean; // モデル初期化中フラグを追加
+  showInitCompleteMessage: boolean; // 初期化完了メッセージの表示状態
 
   // アクション
   checkIfModelDownloaded: () => Promise<boolean>;
@@ -27,6 +31,9 @@ type ModelState = {
   cancelDownload: () => Promise<void>;
   setupModelDownloadListener: () => NativeModuleSubscription;
   removeModelDownloadListener: (subscription: NativeModuleSubscription) => void;
+  createModel: () => Promise<number | null>; // モデルを作成し、ハンドルを返す
+  releaseModel: () => Promise<void>; // モデルを解放する
+  hideInitCompleteMessage: () => void; // 初期化完了メッセージを非表示にする
 };
 
 export const useModelStore = create<ModelState>((set, get) => ({
@@ -36,6 +43,9 @@ export const useModelStore = create<ModelState>((set, get) => ({
   isModelDownloadModalVisible: false,
   isModelDownloaded: false,
   lastMessage: "",
+  modelHandle: null, // 初期値はnull
+  isModelInitializing: false, // 初期値はfalse
+  showInitCompleteMessage: false, // 初期値はfalse
 
   // モデルがダウンロード済みかどうかを確認する
   checkIfModelDownloaded: async () => {
@@ -152,5 +162,71 @@ export const useModelStore = create<ModelState>((set, get) => ({
   // イベントリスナーを削除する
   removeModelDownloadListener: (subscription: NativeModuleSubscription) => {
     subscription.remove();
+  },
+
+  // モデルを作成し、ハンドルを返す
+  createModel: async () => {
+    try {
+      // すでにモデルハンドルがある場合はそれを返す
+      if (get().modelHandle !== null) {
+        console.log(`既存のモデルハンドルを使用: ${get().modelHandle}`);
+        return get().modelHandle;
+      }
+
+      console.log(`${MODEL_NAME}のモデル作成を開始`);
+      // モデル初期化中フラグをセット
+      set({ isModelInitializing: true });
+
+      const handle = await ExpoLlmMediapipe.createModelFromDownloaded(
+        MODEL_NAME,
+        1024, // maxTokens
+        40, // topK
+        0.7, // temperature
+        42 // seed
+      );
+
+      console.log(`モデルが作成されました。ハンドル: ${handle}`);
+      LayoutAnimation.easeInEaseOut();
+      set({
+        modelHandle: handle,
+        isModelInitializing: false,
+        showInitCompleteMessage: true, // 初期化完了メッセージを表示
+      });
+
+      // 2秒後に初期化完了メッセージを非表示にする
+      setTimeout(() => {
+        LayoutAnimation.easeInEaseOut();
+        set({ showInitCompleteMessage: false });
+      }, 2000);
+
+      return handle;
+    } catch (e: any) {
+      console.error(`モデル作成エラー: ${e.message}`);
+      set({
+        lastMessage: `モデル作成エラー: ${e.message}`,
+        isModelInitializing: false,
+      });
+      return null;
+    }
+  },
+
+  // モデルを解放する
+  releaseModel: async () => {
+    const { modelHandle } = get();
+    if (modelHandle !== null) {
+      try {
+        await ExpoLlmMediapipe.releaseModel(modelHandle);
+        console.log(`モデルが解放されました。ハンドル: ${modelHandle}`);
+        set({ modelHandle: null });
+      } catch (e: any) {
+        console.error(`モデル解放エラー: ${e.message}`);
+        set({ lastMessage: `モデル解放エラー: ${e.message}` });
+      }
+    }
+  },
+
+  // 初期化完了メッセージを非表示にする
+  hideInitCompleteMessage: () => {
+    set({ showInitCompleteMessage: false });
   },
 }));
