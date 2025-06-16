@@ -24,6 +24,7 @@ export const useTimer = () => {
     resetTimer,
     updateRemainingTime,
     notifyTimeRemaining,
+    stopTimerSound,
   } = useTimerStore();
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -171,14 +172,16 @@ Reply with ONLY the category name from above. For example: "set_timer_with_value
           // 時間が直接指定されている場合
           const seconds = parseTimeFromVoice(text);
           if (seconds) {
-            showTimerDialog(seconds);
+            // 直接タイマーを開始
+            startTimerWithDescription(seconds);
             return true;
           }
         } else if (command.includes("set_timer_from_step") && currentStep) {
           // 現在のステップから時間を抽出してタイマーをセット
           const stepSeconds = extractCookingTimeFromStep(currentStep);
           if (stepSeconds) {
-            showTimerDialog(stepSeconds, `${currentStep}のタイマー`);
+            // 直接タイマーを開始
+            startTimerWithDescription(stepSeconds, `${currentStep}のタイマー`);
             return true;
           }
         }
@@ -199,7 +202,7 @@ Reply with ONLY the category name from above. For example: "set_timer_with_value
     // 時間が直接指定されている場合
     const seconds = parseTimeFromVoice(lowerText);
     if (seconds) {
-      showTimerDialog(seconds);
+      startTimerWithDescription(seconds);
       return true;
     }
 
@@ -207,7 +210,7 @@ Reply with ONLY the category name from above. For example: "set_timer_with_value
     if (currentStep) {
       const stepSeconds = extractCookingTimeFromStep(currentStep);
       if (stepSeconds) {
-        showTimerDialog(stepSeconds, `${currentStep}のタイマー`);
+        startTimerWithDescription(stepSeconds, `${currentStep}のタイマー`);
         return true;
       }
     }
@@ -215,95 +218,37 @@ Reply with ONLY the category name from above. For example: "set_timer_with_value
     return false;
   };
 
-  // タイマーダイアログの操作に対する応答を処理
+  // タイマーダイアログの操作に対する応答を処理（確認ダイアログは不要になったため簡略化）
   const processTimerDialogResponse = async (
     text: string,
     modelHandle?: number | null
   ): Promise<boolean> => {
-    if (!isDialogVisible) return false;
-
-    // Gemma 3モデルが利用可能な場合はそれを使ってタイマー確認応答かどうかを判断する
-    if (modelHandle) {
-      try {
-        // Gemma 3モデルに判断させるためのプロンプト（柔軟な認識を追加）
-        const prompt = `
-Analyze the user's statement and determine if it's a response to the timer confirmation dialog.
-A timer confirmation dialog is currently displayed, asking if the user wants to set the timer.
-Based on the user's response, identify which action should be taken from the following categories:
-
-- confirm: Start the timer (positive response)
-  Examples: "yes", "ok", "sure", "start", "confirm", "go ahead", "proceed", "はい", "オッケー", 
-            "いいよ", "開始", "スタート", "始めて", "セットして", "タイマースタート", "うん"
-- cancel: Cancel the timer (negative response)
-  Examples: "no", "cancel", "don't", "stop", "nevermind", "いいえ", "キャンセル", "やめて", 
-            "必要ない", "不要", "ダメ", "止めて", "ストップ", "結構です"
-- not_response: Not a valid response
-
-Look for the intent behind the statement, not just exact matches. Understand similar responses even if the phrasing is different.
-
-User's statement: "${text}"
-
-Reply with ONLY the category name from above. For example: "confirm", "cancel", etc.
-`;
-
-        console.log("タイマー確認応答判定のプロンプト:", prompt);
-
-        // Gemma 3モデルで判定
-        const response = await ExpoLlmMediapipe.generateResponse(
-          modelHandle,
-          1,
-          prompt
-        );
-        console.log("Gemma 3モデルの判定結果:", response);
-
-        // レスポンスから余分な空白や改行を削除して小文字に統一
-        const command = response.trim().toLowerCase();
-
-        if (command.includes("confirm")) {
-          startTimer();
-          return true;
-        } else if (command.includes("cancel")) {
-          hideTimerDialog();
-          return true;
-        }
-      } catch (error) {
-        console.error("タイマー確認応答判定エラー:", error);
-        // エラーが発生した場合はフォールバックとして従来の方法で判定
-      }
-    }
-
-    // モデルが使えない場合やエラーが発生した場合は従来の方法でタイマー応答を判定
-    const lowerText = text.toLowerCase();
-
-    // 肯定的な応答パターン
-    const confirmPatterns = [/ok|okay|はい|よし|開始|スタート|start/i];
-
-    // 否定的な応答パターン
-    const cancelPatterns = [/cancel|キャンセル|やめ|いいえ|ダメ|no/i];
-
-    // 肯定的な応答があった場合、タイマーを開始
-    if (confirmPatterns.some((pattern) => pattern.test(lowerText))) {
-      startTimer();
-      return true;
-    }
-
-    // 否定的な応答があった場合、ダイアログを閉じる
-    if (cancelPatterns.some((pattern) => pattern.test(lowerText))) {
-      hideTimerDialog();
-      return true;
-    }
-
+    // 確認ダイアログがなくなったため常にfalseを返す
     return false;
   };
 
   // タイマーを閉じる機能
-  const closeTimer = useCallback(() => {
+  const closeTimer = useCallback(async () => {
+    // タイマー音を停止（再生中の場合）
+    await stopTimerSound();
+
     // タイマーをリセット
     resetTimer();
 
     // ダイアログを閉じる
     hideTimerDialog();
-  }, [resetTimer, hideTimerDialog]);
+  }, [resetTimer, hideTimerDialog, stopTimerSound]);
+
+  // 確認ダイアログなしでタイマーを直接開始する
+  const startTimerWithDescription = useCallback(
+    (seconds: number, description = "") => {
+      setDuration(seconds);
+      updateRemainingTime(seconds);
+      setTimerDescription(description);
+      startTimer();
+    },
+    [setDuration, updateRemainingTime, setTimerDescription, startTimer]
+  );
 
   return {
     isTimerActive,
@@ -326,5 +271,6 @@ Reply with ONLY the category name from above. For example: "confirm", "cancel", 
     processTimerDialogResponse,
     extractCookingTimeFromStep,
     closeTimer, // 新しい機能をエクスポート
+    startTimerWithDescription, // 新機能をエクスポート
   };
 };

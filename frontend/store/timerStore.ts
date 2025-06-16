@@ -10,6 +10,8 @@ interface TimerState {
   remainingTime: number; // 秒単位
   timerDescription?: string;
   isManualTimerDialogVisible: boolean;
+  timerSound: Audio.Sound | null; // タイマー音の参照を追加
+  timerSoundInterval: NodeJS.Timeout | null; // タイマー再生間隔の参照を追加
 
   // アクション
   setDuration: (seconds: number) => void;
@@ -23,6 +25,7 @@ interface TimerState {
   resetTimer: () => void;
   updateRemainingTime: (seconds: number) => void;
   notifyTimeRemaining: (seconds: number) => Promise<void>;
+  stopTimerSound: () => Promise<void>; // タイマー音を停止する関数を追加
 }
 
 export const useTimerStore = create<TimerState>((set, get) => ({
@@ -32,6 +35,8 @@ export const useTimerStore = create<TimerState>((set, get) => ({
   remainingTime: 0,
   timerDescription: undefined,
   isManualTimerDialogVisible: false,
+  timerSound: null, // 音声オブジェクトの初期状態
+  timerSoundInterval: null, // 間隔タイマーの初期状態
 
   setDuration: (seconds) => set({ duration: seconds, remainingTime: seconds }),
 
@@ -67,7 +72,11 @@ export const useTimerStore = create<TimerState>((set, get) => ({
 
   resetTimer: () => {
     console.log("タイマーをリセットします");
-    const { duration } = get();
+    const { duration, stopTimerSound } = get();
+
+    // タイマー音を停止
+    stopTimerSound();
+
     set({
       remainingTime: duration,
       isTimerActive: false,
@@ -75,6 +84,29 @@ export const useTimerStore = create<TimerState>((set, get) => ({
   },
 
   updateRemainingTime: (seconds) => set({ remainingTime: seconds }),
+
+  // タイマー音を停止する関数
+  stopTimerSound: async () => {
+    const { timerSound, timerSoundInterval } = get();
+
+    // 再生間隔タイマーがあれば停止
+    if (timerSoundInterval) {
+      clearInterval(timerSoundInterval);
+      set({ timerSoundInterval: null });
+    }
+
+    // 音声オブジェクトがあれば停止してアンロード
+    if (timerSound) {
+      try {
+        await timerSound.stopAsync();
+        await timerSound.unloadAsync();
+        console.log("タイマー音を停止・解放しました");
+      } catch (error) {
+        console.error("タイマー音停止エラー:", error);
+      }
+      set({ timerSound: null });
+    }
+  },
 
   notifyTimeRemaining: async (seconds) => {
     // 通知が必要なタイミングかチェック
@@ -109,6 +141,9 @@ export const useTimerStore = create<TimerState>((set, get) => ({
             await soundObject.setIsMutedAsync(false);
             await soundObject.setVolumeAsync(1.0);
 
+            // 状態に音声オブジェクトを保存
+            set({ timerSound: soundObject });
+
             // 最初の再生
             await soundObject.playAsync();
             console.log("再生開始しました");
@@ -123,7 +158,11 @@ export const useTimerStore = create<TimerState>((set, get) => ({
                 await soundObject.unloadAsync();
                 console.log("サウンド再生完了・解放しました");
                 LayoutAnimation.easeInEaseOut();
-                set({ isTimerActive: false });
+                set({
+                  isTimerActive: false,
+                  timerSound: null,
+                  timerSoundInterval: null,
+                });
                 return;
               }
 
@@ -137,8 +176,12 @@ export const useTimerStore = create<TimerState>((set, get) => ({
                 try {
                   await soundObject.unloadAsync();
                 } catch (e) {}
+                set({ timerSound: null, timerSoundInterval: null });
               }
             }, 2500);
+
+            // 再生間隔タイマーを状態に保存
+            set({ timerSoundInterval: playInterval });
           } catch (error) {
             console.error("音声再生エラー:", error);
           }

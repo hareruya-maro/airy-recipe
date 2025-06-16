@@ -17,21 +17,16 @@ interface CookingTimerProps {
 export const CookingTimer: React.FC<CookingTimerProps> = ({ currentStep }) => {
   const {
     isTimerActive,
-    isDialogVisible,
     remainingTime,
     timerDescription,
-    duration,
     isManualTimerDialogVisible,
     formatTime,
     startTimer,
     pauseTimer,
     resetTimer,
-    hideTimerDialog,
-    showTimerDialog,
-    showManualTimerDialogVisible,
     hideManualTimerDialogVisible,
-    setDuration,
     closeTimer, // タイマーを閉じる機能を取得
+    startTimerWithDescription, // startTimerWithDescriptionを追加
   } = useTimer();
 
   // 手動でタイマーを設定するダイアログの状態
@@ -74,13 +69,6 @@ export const CookingTimer: React.FC<CookingTimerProps> = ({ currentStep }) => {
     return "#3498db";
   };
 
-  // 手動タイマー設定のダイアログを開く
-  const openManualTimerDialog = () => {
-    setMinutes("");
-    setSeconds("");
-    showManualTimerDialogVisible();
-  };
-
   // タイマーを設定して開始する
   const handleSetTimer = () => {
     const mins = parseInt(minutes) || 0;
@@ -89,7 +77,8 @@ export const CookingTimer: React.FC<CookingTimerProps> = ({ currentStep }) => {
 
     if (totalSeconds > 0) {
       hideManualTimerDialogVisible();
-      showTimerDialog(totalSeconds);
+      // 確認ダイアログなしで直接タイマーを開始
+      startTimerWithDescription(totalSeconds);
     }
   };
 
@@ -116,20 +105,24 @@ export const CookingTimer: React.FC<CookingTimerProps> = ({ currentStep }) => {
             </View>
 
             <View style={styles.timerControls}>
-              {isTimerActive ? (
-                <IconButton
-                  icon="pause"
-                  size={20}
-                  iconColor="#fff"
-                  onPress={pauseTimer}
-                />
-              ) : (
-                <IconButton
-                  icon="play"
-                  size={20}
-                  iconColor="#fff"
-                  onPress={startTimer}
-                />
+              {remainingTime > 0 && (
+                <>
+                  {isTimerActive ? (
+                    <IconButton
+                      icon="pause"
+                      size={20}
+                      iconColor="#fff"
+                      onPress={pauseTimer}
+                    />
+                  ) : (
+                    <IconButton
+                      icon="play"
+                      size={20}
+                      iconColor="#fff"
+                      onPress={startTimer}
+                    />
+                  )}
+                </>
               )}
               <IconButton
                 icon="restart"
@@ -147,23 +140,6 @@ export const CookingTimer: React.FC<CookingTimerProps> = ({ currentStep }) => {
           </View>
         </Animated.View>
       )}
-
-      {/* タイマー設定確認ダイアログ */}
-      <Portal>
-        <Dialog visible={isDialogVisible} onDismiss={hideTimerDialog}>
-          <Dialog.Title>タイマーを開始しますか？</Dialog.Title>
-          <Dialog.Content>
-            <Text variant="bodyMedium">
-              {timerDescription ? `${timerDescription}` : ""}
-              {duration > 0 && ` - ${formatTime(duration)}のタイマー`}
-            </Text>
-          </Dialog.Content>
-          <Dialog.Actions>
-            <Button onPress={hideTimerDialog}>キャンセル</Button>
-            <Button onPress={startTimer}>開始</Button>
-          </Dialog.Actions>
-        </Dialog>
-      </Portal>
 
       {/* 手動タイマー設定ダイアログ */}
       <Portal>
@@ -197,7 +173,7 @@ export const CookingTimer: React.FC<CookingTimerProps> = ({ currentStep }) => {
             <Button onPress={() => hideManualTimerDialogVisible()}>
               キャンセル
             </Button>
-            <Button onPress={handleSetTimer}>設定</Button>
+            <Button onPress={handleSetTimer}>開始</Button>
           </Dialog.Actions>
         </Dialog>
       </Portal>
