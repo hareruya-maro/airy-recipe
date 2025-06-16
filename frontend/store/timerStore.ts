@@ -86,11 +86,9 @@ export const useTimerStore = create<TimerState>((set, get) => ({
       else if (seconds === 0) message = "タイマーが終了しました";
 
       if (message) {
-        // 音声読み上げ
-        await Speech.speak(message, { language: "ja-JP" });
-
         // 終了時のみ音を鳴らす（5回繰り返し）
         if (seconds === 0) {
+          console.log("タイマー終了音を再生します");
           const { sound } = await Audio.Sound.createAsync(
             require("../assets/sounds/ringtone_loop.wav")
           );
@@ -119,6 +117,9 @@ export const useTimerStore = create<TimerState>((set, get) => ({
 
           // 最初の再生を開始
           await playSound();
+        } else {
+          // 音声読み上げ
+          Speech.speak(message, { language: "ja-JP" });
         }
       }
     }

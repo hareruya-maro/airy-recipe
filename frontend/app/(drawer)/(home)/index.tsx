@@ -107,31 +107,6 @@ export default function HomeScreen() {
         )
           .then((number) => {
             console.log(`${MODEL_NAME}のモデルが正常に作成されました`);
-            const prompt = `
-Analyze the user's statement and determine if it's a command related to the video player.
-If it is a command, identify which action should be taken from the following categories:
-
-- play: Play the video (例: "動画を再生", "再生して", "見せて", "スタート", "プレイ" など)
-- pause: Pause the video (例: "動画を停止", "一時停止", "ポーズ", "止めて" など)
-- toggle_play: Toggle between play and pause (例: "再生/停止を切り替え", "トグル" など)
-- fullscreen: Switch to fullscreen mode (例: "全画面表示", "フルスクリーン", "大きく表示" など)
-- close: Close the video player (例: "動画を閉じる", "ビデオを消して", "終了" など)
-- not_command: Not a video player related command
-
-User's statement: "動画を止めて"
-
-Try to understand the intent of the statement, even if the wording doesn't exactly match the examples.
-If the statement has similar meaning or intent as one of the commands, classify it as that command.
-Reply with ONLY the category name from above. For example: "play", "pause", etc.
-`;
-
-            ExpoLlmMediapipe.generateResponse(number, 1, prompt)
-              .then((response) => {
-                console.log(`モデル応答: ${response}`);
-              })
-              .catch((error) => {
-                console.error(`モデル応答エラー: ${error.message}`);
-              });
           })
           .catch((error) => {
             console.error(`モデル作成エラー: ${error.message}`);

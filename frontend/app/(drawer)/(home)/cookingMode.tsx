@@ -148,13 +148,6 @@ export default function CookingModeScreen() {
     };
   }, []); // 空の依存配列で初回のみ実行
 
-  // セクションデータが更新されたら自動スクロールする
-  useEffect(() => {
-    if (conversationHistory.length > 0 && flatListRef.current) {
-      flatListRef.current.scrollToEnd({ animated: true });
-    }
-  }, [conversationHistory]);
-
   // 材料リストの表示切替用コールバック
   const handleToggleIngredients = useCallback(
     (show?: boolean) => {
@@ -391,35 +384,31 @@ Reply with ONLY the category name from above. For example: "play", "pause", etc.
           />
         );
 
-      case "feedback":
-        return (
-          <Surface style={styles.recognitionFeedback} elevation={1}>
-            <Text variant="labelLarge">認識テキスト:</Text>
-            <Text style={styles.recognizedText}>{item.data}</Text>
-          </Surface>
-        );
-
       case "conversation":
         return (
           <View style={styles.conversationContainer}>
             <Text style={styles.conversationTitle}>会話履歴</Text>
-            {item.data.map((message: ConversationMessage) => (
-              <Surface
-                key={message.id}
-                style={[
-                  styles.messageItem,
-                  message.isUser ? styles.userMessage : styles.aiMessage,
-                ]}
-                elevation={1}
-              >
-                <View style={styles.messageHeader}>
-                  <Text style={{ color: "#fff", fontWeight: "bold" }}>
-                    {message.isUser ? "あなた:" : "AIry Recipe:"}
-                  </Text>
-                </View>
-                <Text style={styles.messageText}>{message.text}</Text>
-              </Surface>
-            ))}
+            {/* 新しいものから順に表示 */}
+            {item.data
+              .slice() // 元配列を変更しないようコピー
+              .reverse()
+              .map((message: ConversationMessage) => (
+                <Surface
+                  key={message.id}
+                  style={[
+                    styles.messageItem,
+                    message.isUser ? styles.userMessage : styles.aiMessage,
+                  ]}
+                  elevation={1}
+                >
+                  <View style={styles.messageHeader}>
+                    <Text style={{ color: "#fff", fontWeight: "bold" }}>
+                      {message.isUser ? "あなた:" : "AIry Recipe:"}
+                    </Text>
+                  </View>
+                  <Text style={styles.messageText}>{message.text}</Text>
+                </Surface>
+              ))}
           </View>
         );
 

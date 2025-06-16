@@ -191,13 +191,13 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
       console.log("音声認識終了");
       setVoiceListening(false);
 
-      // 音声認識が終了した時点で最終的なテキストでコマンドを処理
-      if (isProcessingRef.current && currentTextRef.current) {
-        console.log("音声認識終了時のテキスト:", currentTextRef.current);
-        // 直接処理せずdebounce処理を行う
-        processWithDebounce(currentTextRef.current);
-        isProcessingRef.current = false;
-      }
+      // // 音声認識が終了した時点で最終的なテキストでコマンドを処理
+      // if (isProcessingRef.current && currentTextRef.current) {
+      //   console.log("音声認識終了時のテキスト:", currentTextRef.current);
+      //   // 直接処理せずdebounce処理を行う
+      //   processWithDebounce(currentTextRef.current);
+      //   isProcessingRef.current = false;
+      // }
     };
 
     Voice.onSpeechResults = (e: SpeechResultsEvent) => {
@@ -209,9 +209,9 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
         setRecognizedText(recognizedText);
 
         // コールバックが提供されている場合は実行
-        if (callbacks?.onVoiceRecognitionResult) {
-          callbacks.onVoiceRecognitionResult(recognizedText);
-        }
+        // if (callbacks?.onVoiceRecognitionResult) {
+        //   callbacks.onVoiceRecognitionResult(recognizedText);
+        // }
 
         // 現在の認識テキストを更新
         currentTextRef.current = recognizedText;
@@ -280,7 +280,7 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
 
   const restartVoiceRecognition = async () => {
     try {
-      await Voice.destroy();
+      await Voice.cancel();
       await Voice.start("ja-JP");
       setVoiceListening(true);
     } catch (e) {
