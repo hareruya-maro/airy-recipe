@@ -31,6 +31,7 @@ export const CookingTimer: React.FC<CookingTimerProps> = ({ currentStep }) => {
     showManualTimerDialogVisible,
     hideManualTimerDialogVisible,
     setDuration,
+    closeTimer, // タイマーを閉じる機能を取得
   } = useTimer();
 
   // 手動でタイマーを設定するダイアログの状態
@@ -96,7 +97,7 @@ export const CookingTimer: React.FC<CookingTimerProps> = ({ currentStep }) => {
   return (
     <>
       {/* タイマー表示 */}
-      {(isTimerActive || remainingTime > 0) && (
+      {isTimerActive && (
         <Animated.View
           style={[
             styles.timerContainer,
@@ -135,6 +136,12 @@ export const CookingTimer: React.FC<CookingTimerProps> = ({ currentStep }) => {
                 size={20}
                 iconColor="#fff"
                 onPress={resetTimer}
+              />
+              <IconButton
+                icon="close"
+                size={20}
+                iconColor="#fff"
+                onPress={closeTimer}
               />
             </View>
           </View>

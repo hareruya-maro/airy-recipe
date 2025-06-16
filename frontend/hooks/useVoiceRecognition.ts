@@ -59,34 +59,31 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
       console.log("ダイアログを表示します");
       setDialogVisible(true);
 
-      // 少し待ってから読み上げを開始（UIの更新を確実にするため）
-      setTimeout(async () => {
-        // 日本語で読み上げるようにオプションを設定
-        setIsSpeaking(true);
-        console.log("音声読み上げを開始します");
-        await Speech.speak(text, {
-          language: "ja-JP",
-          // 読み上げ完了時のコールバック
-          onDone: () => {
-            console.log("音声読み上げが完了しました");
-            setIsSpeaking(false);
-            // 読み上げ終了後にダイアログを非表示
-            setDialogVisible(false);
-          },
-          // エラー発生時のコールバック
-          onError: (error) => {
-            console.error("TTSエラー:", error);
-            setIsSpeaking(false);
-            // エラー時もダイアログを非表示
-            setDialogVisible(false);
-          },
-          onStopped: () => {
-            console.log("音声読み上げが停止されました");
-            setIsSpeaking(false);
-            setDialogVisible(false);
-          },
-        });
-      }, 100);
+      // 日本語で読み上げるようにオプションを設定
+      setIsSpeaking(true);
+      console.log("音声読み上げを開始します");
+      Speech.speak(text, {
+        language: "ja-JP",
+        // 読み上げ完了時のコールバック
+        onDone: () => {
+          console.log("音声読み上げが完了しました");
+          setIsSpeaking(false);
+          // 読み上げ終了後にダイアログを非表示
+          setDialogVisible(false);
+        },
+        // エラー発生時のコールバック
+        onError: (error) => {
+          console.error("TTSエラー:", error);
+          setIsSpeaking(false);
+          // エラー時もダイアログを非表示
+          setDialogVisible(false);
+        },
+        onStopped: () => {
+          console.log("音声読み上げが停止されました");
+          setIsSpeaking(false);
+          setDialogVisible(false);
+        },
+      });
     } catch (e) {
       console.error("TTSエラー:", e);
       setIsSpeaking(false);
@@ -115,7 +112,8 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
         // 日本語で読み上げるようにオプションを設定
         setIsSpeaking(true);
         console.log("音声読み上げを開始します");
-        await Speech.speak(text, {
+
+        Speech.speak(text, {
           language: "ja-JP",
           // 読み上げ完了時のコールバック
           onDone: () => {
@@ -207,11 +205,6 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
 
         // UIに認識テキストを表示
         setRecognizedText(recognizedText);
-
-        // コールバックが提供されている場合は実行
-        // if (callbacks?.onVoiceRecognitionResult) {
-        //   callbacks.onVoiceRecognitionResult(recognizedText);
-        // }
 
         // 現在の認識テキストを更新
         currentTextRef.current = recognizedText;
@@ -385,7 +378,7 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
               // 日本語で読み上げるようにオプションを設定
               setIsSpeaking(true);
               console.log("音声読み上げを開始します");
-              await Speech.speak(data.response!, {
+              Speech.speak(data.response!, {
                 language: "ja-JP",
                 // 読み上げ完了時のコールバック
                 onDone: () => {

@@ -1,5 +1,6 @@
 import { Audio } from "expo-av";
 import * as Speech from "expo-speech";
+import { LayoutAnimation } from "react-native";
 import { create } from "zustand";
 
 interface TimerState {
@@ -65,6 +66,7 @@ export const useTimerStore = create<TimerState>((set, get) => ({
   pauseTimer: () => set({ isTimerActive: false }),
 
   resetTimer: () => {
+    console.log("タイマーをリセットします");
     const { duration } = get();
     set({
       remainingTime: duration,
@@ -120,6 +122,8 @@ export const useTimerStore = create<TimerState>((set, get) => ({
                 clearInterval(playInterval);
                 await soundObject.unloadAsync();
                 console.log("サウンド再生完了・解放しました");
+                LayoutAnimation.easeInEaseOut();
+                set({ isTimerActive: false });
                 return;
               }
 

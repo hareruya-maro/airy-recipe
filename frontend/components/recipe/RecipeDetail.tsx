@@ -2,7 +2,15 @@ import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
-import { Appbar, Button, Chip, Surface, Text } from "react-native-paper";
+import {
+  Appbar,
+  Button,
+  Chip,
+  MD3Theme,
+  Surface,
+  Text,
+  useTheme,
+} from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { auth } from "../../config/firebase";
 import { Recipe, useRecipeStore } from "../../store/recipeStore";
@@ -14,6 +22,7 @@ type RecipeDetailProps = {
 };
 
 export const RecipeDetail: React.FC<RecipeDetailProps> = ({ recipe }) => {
+  const styles = makeStyles(useTheme());
   const { currentStepIndex, nextStep, previousStep, setCurrentRecipe } =
     useRecipeStore();
   const router = useRouter();
@@ -58,7 +67,7 @@ export const RecipeDetail: React.FC<RecipeDetailProps> = ({ recipe }) => {
           <Image
             source={{ uri: recipe.image }}
             style={styles.image}
-            resizeMode="cover"
+            contentFit="cover"
           />
           <View style={styles.headerOverlay}>
             <Text variant="headlineMedium" style={styles.title}>
@@ -150,98 +159,99 @@ export const RecipeDetail: React.FC<RecipeDetailProps> = ({ recipe }) => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-  },
-  scrollContent: {
-    paddingBottom: 32,
-  },
-  header: {
-    height: 250,
-    position: "relative",
-  },
-  image: {
-    width: "100%",
-    height: "100%",
-  },
-  headerOverlay: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    padding: 16,
-  },
-  title: {
-    color: "white",
-    fontWeight: "bold",
-  },
-  infoContainer: {
-    padding: 16,
-    // backgroundColor: "#f9f9f9",
-  },
-  infoRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  infoItem: {
-    alignItems: "center",
-  },
-  section: {
-    padding: 16,
-  },
-  description: {
-    fontSize: 16,
-    lineHeight: 24,
-  },
-  tagsContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    paddingHorizontal: 16,
-    marginVertical: 8,
-  },
-  tag: {
-    margin: 4,
-  },
-  sectionTitle: {
-    fontWeight: "bold",
-    marginBottom: 8,
-  },
-  tipsSection: {
-    padding: 16,
-    // backgroundColor: "#f0f8ff",
-    margin: 16,
-    borderRadius: 8,
-  },
-  tipText: {
-    fontSize: 16,
-    lineHeight: 24,
-    marginVertical: 4,
-  },
-  cookButtonContent: {
-    height: 50,
-  },
-  cookButtonLabel: {
-    fontSize: 18,
-  },
-  // フローティングボタンスタイル
-  floatingButton: {
-    position: "absolute",
-    // bottomはinsetに応じて動的に調整するためにここでは設定しない
-    left: "10%",
-    right: "10%",
-    width: "80%",
-    borderRadius: 30,
-    elevation: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-  },
-  // スクロール領域の下部に余白を追加
-  buttonSpacer: {
-    // heightはinsetに応じて動的に調整するためにここでは設定しない
-  },
-});
+const makeStyles = (theme: MD3Theme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+    },
+    scrollContent: {
+      paddingBottom: 32,
+      backgroundColor: theme.colors.background,
+    },
+    header: {
+      height: 250,
+      position: "relative",
+    },
+    image: {
+      width: "100%",
+      height: "100%",
+    },
+    headerOverlay: {
+      position: "absolute",
+      bottom: 0,
+      left: 0,
+      right: 0,
+      backgroundColor: "rgba(0,0,0,0.5)",
+      padding: 16,
+    },
+    title: {
+      color: "white",
+      fontWeight: "bold",
+    },
+    infoContainer: {
+      padding: 16,
+      // backgroundColor: "#f9f9f9",
+    },
+    infoRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+    },
+    infoItem: {
+      alignItems: "center",
+    },
+    section: {
+      padding: 16,
+    },
+    description: {
+      fontSize: 16,
+      lineHeight: 24,
+    },
+    tagsContainer: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      paddingHorizontal: 16,
+      marginVertical: 8,
+    },
+    tag: {
+      margin: 4,
+    },
+    sectionTitle: {
+      fontWeight: "bold",
+      marginBottom: 8,
+    },
+    tipsSection: {
+      padding: 16,
+      // backgroundColor: "#f0f8ff",
+      margin: 16,
+      borderRadius: 8,
+    },
+    tipText: {
+      fontSize: 16,
+      lineHeight: 24,
+      marginVertical: 4,
+    },
+    cookButtonContent: {
+      height: 50,
+    },
+    cookButtonLabel: {
+      fontSize: 18,
+    },
+    // フローティングボタンスタイル
+    floatingButton: {
+      position: "absolute",
+      // bottomはinsetに応じて動的に調整するためにここでは設定しない
+      left: "10%",
+      right: "10%",
+      width: "80%",
+      borderRadius: 30,
+      elevation: 8,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 6,
+    },
+    // スクロール領域の下部に余白を追加
+    buttonSpacer: {
+      // heightはinsetに応じて動的に調整するためにここでは設定しない
+    },
+  });

@@ -1,5 +1,5 @@
 import ExpoLlmMediapipe from "expo-llm-mediapipe";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useTimerStore } from "../store/timerStore";
 
 /**
@@ -296,6 +296,15 @@ Reply with ONLY the category name from above. For example: "confirm", "cancel", 
     return false;
   };
 
+  // タイマーを閉じる機能
+  const closeTimer = useCallback(() => {
+    // タイマーをリセット
+    resetTimer();
+
+    // ダイアログを閉じる
+    hideTimerDialog();
+  }, [resetTimer, hideTimerDialog]);
+
   return {
     isTimerActive,
     isDialogVisible,
@@ -316,5 +325,6 @@ Reply with ONLY the category name from above. For example: "confirm", "cancel", 
     processVoiceCommand,
     processTimerDialogResponse,
     extractCookingTimeFromStep,
+    closeTimer, // 新しい機能をエクスポート
   };
 };

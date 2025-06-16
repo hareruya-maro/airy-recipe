@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
-import { Button, Text } from "react-native-paper";
+import { Button, MD3Theme, Text, useTheme } from "react-native-paper";
 import { RecipeDetail } from "../../../components/recipe/RecipeDetail";
 import { Recipe, useRecipeStore } from "../../../store/recipeStore";
 
@@ -12,6 +12,8 @@ export default function DetailScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const styles = makeStyles(useTheme());
 
   // コンポーネントのマウント時またはIDが変更されたときにレシピ詳細を取得
   useEffect(() => {
@@ -82,18 +84,20 @@ export default function DetailScreen() {
   return <RecipeDetail recipe={recipe} />;
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 16,
-  },
-  button: {
-    marginTop: 16,
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-  },
-});
+const makeStyles = (theme: MD3Theme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      padding: 16,
+      backgroundColor: theme.colors.background,
+    },
+    button: {
+      marginTop: 16,
+    },
+    loadingText: {
+      marginTop: 16,
+      fontSize: 16,
+    },
+  });
