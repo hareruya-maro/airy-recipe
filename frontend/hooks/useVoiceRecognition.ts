@@ -263,7 +263,7 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
   // 音声認識の停止
   const stopVoiceRecognition = async () => {
     try {
-      await Voice.stop();
+      await Voice.destroy();
       setVoiceListening(false);
     } catch (e) {
       console.error(e);
