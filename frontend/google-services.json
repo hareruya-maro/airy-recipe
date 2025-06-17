@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "240230020859",
+    "project_id": "airy-recipe",
+    "storage_bucket": "airy-recipe.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:240230020859:android:9177547efdf85bf67be25e",
+        "android_client_info": {
+          "package_name": "com.apps.hal.airyrecipe"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA04Owi__-dBrE-odi8KcXmAEm4YCE9tbU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

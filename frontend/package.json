@@ -9,6 +9,7 @@
     "build:local:ios:device": "eas build -p ios --profile device --local",
     "build:local:ios:preview": "eas build -p ios --profile preview --local",
     "build:local:ios:production": "eas build -p ios --profile production --local",
+    "build:local:android:production": "eas build -p android --profile production --local --clear-cache",
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
