@@ -124,6 +124,8 @@ const makeStyle = (theme: MD3Theme) =>
       padding: 20,
       margin: 20,
       borderRadius: 10,
+      maxWidth: 400,
+      alignSelf: "center", // 中央揃えにする
     },
     title: {
       fontSize: 18,
