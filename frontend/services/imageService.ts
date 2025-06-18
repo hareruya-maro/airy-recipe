@@ -155,8 +155,18 @@ const uploadRecipeImage = async (
       throw new Error("ログインしていません");
     }
 
-    const uid = currentUser.uid;
-    const path = `${uid}/${recipeId}/${imageType}.jpg`;
+    // 年月日_時分秒のフォーマットを生成
+    const now = new Date();
+    const dateTimeStr = `${now.getFullYear()}${String(
+      now.getMonth() + 1
+    ).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}_${String(
+      now.getHours()
+    ).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}${String(
+      now.getSeconds()
+    ).padStart(2, "0")}`;
+
+    // 新しいパスフォーマット: recipe_images/年月日_時分秒/image.jpg
+    const path = `recipe_images/${dateTimeStr}/${imageType}.jpg`;
 
     return await uploadImageToStorage(imageUri, path);
   } catch (error) {

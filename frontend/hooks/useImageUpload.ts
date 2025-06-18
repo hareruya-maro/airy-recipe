@@ -169,7 +169,21 @@ export const useImageUpload = () => {
       setError(null);
 
       // フォルダ名が指定されていない場合は現在のタイムスタンプを使用
-      const folder = folderName || `recipe_images/${Date.now()}`;
+      // 年月日_時分秒のフォーマット
+      let folder;
+      if (folderName) {
+        folder = folderName;
+      } else {
+        const now = new Date();
+        folder = `recipe_images/${now.getFullYear()}${String(
+          now.getMonth() + 1
+        ).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}_${String(
+          now.getHours()
+        ).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}${String(
+          now.getSeconds()
+        ).padStart(2, "0")}`;
+      }
+
       const uploadPromises = images.map(async (image, index) => {
         // アップロード中のステータスを更新
         setImages((prev) =>

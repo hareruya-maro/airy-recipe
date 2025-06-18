@@ -78,7 +78,7 @@ export const RecipeImageUploader = ({
   // Firebase Storageにアップロードする（通常のアップロード）
   const handleUpload = async () => {
     if (images.length > 0) {
-      // フォルダ名を生成（例：recipe_年月日_時分秒）
+      // フォルダ名を生成（例：recipe_images/年月日_時分秒）
       const now = new Date();
       const folderName = `recipe_images/${now.getFullYear()}${String(
         now.getMonth() + 1

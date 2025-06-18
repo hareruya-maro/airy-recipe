@@ -52,6 +52,8 @@ export default function EditRecipeScreen() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [mainImage, setMainImage] = useState<string>("");
+  // ローカル画像のURIを保持するための状態
+  const [localMainImage, setLocalMainImage] = useState<string | null>(null);
   const [prepTime, setPrepTime] = useState("");
   const [cookTime, setCookTime] = useState("");
   const [servings, setServings] = useState("");
@@ -62,6 +64,8 @@ export default function EditRecipeScreen() {
   const [steps, setSteps] = useState<{ description: string; image?: string }[]>(
     []
   );
+  // 手順画像のローカルURIを保持する配列
+  const [localStepImages, setLocalStepImages] = useState<(string | null)[]>([]);
   const [tags, setTags] = useState<string[]>([]);
   const [isPublic, setIsPublic] = useState(false);
 
@@ -144,18 +148,23 @@ export default function EditRecipeScreen() {
     setTitle(recipe.title);
     setDescription(recipe.description);
     setMainImage(recipe.image || "");
+    setLocalMainImage(null); // ローカルメイン画像は最初はnull
     // 分単位の数値に変換（末尾の「分」を削除）
     setPrepTime(recipe.prepTime.replace("分", ""));
     setCookTime(recipe.cookTime.replace("分", ""));
     setServings(recipe.servings.toString());
     setDifficulty(recipe.difficulty);
     setIngredients(recipe.ingredients);
-    setSteps(
-      recipe.steps.map((step) => ({
-        description: step.description,
-        image: step.image,
-      }))
-    );
+
+    const recipeSteps = recipe.steps.map((step) => ({
+      description: step.description,
+      image: step.image,
+    }));
+
+    setSteps(recipeSteps);
+    // ステップ数分のnull配列を作成（すべての手順画像は最初はローカルURIなし）
+    setLocalStepImages(Array(recipeSteps.length).fill(null));
+
     setTags(recipe.tags || []);
     setIsPublic(recipe.isPublic || false);
   };
@@ -168,7 +177,7 @@ export default function EditRecipeScreen() {
 
   // 画像を選択（ギャラリーから）
   const handlePickImage = async () => {
-    if (!currentImageTarget || !id) return;
+    if (!currentImageTarget) return;
 
     try {
       setImageDialogVisible(false);
@@ -176,51 +185,44 @@ export default function EditRecipeScreen() {
 
       if (!imageUri) return; // 画像選択キャンセル
 
-      setIsUploading(true);
-      setSnackbarMessage("画像をアップロード中...");
-      setSnackbarVisible(true);
-
       if (currentImageTarget.type === "main") {
-        // メイン画像をアップロード
-        const downloadUrl = await imageService.uploadRecipeImage(
-          id,
-          imageUri,
-          "main"
-        );
-        setMainImage(downloadUrl);
+        // メイン画像のローカルURIを保存（まだアップロードしない）
+        setMainImage(imageUri); // プレビュー用に表示
+        setLocalMainImage(imageUri); // 後でアップロード用に保持
       } else if (
         currentImageTarget.type === "step" &&
         typeof currentImageTarget.index === "number"
       ) {
-        // 手順画像をアップロード
+        // 手順画像のローカルURIを保存（まだアップロードしない）
         const stepIndex = currentImageTarget.index;
-        const downloadUrl = await imageService.uploadRecipeImage(
-          id,
-          imageUri,
-          `step_${stepIndex + 1}`
-        );
 
         const newSteps = [...steps];
         newSteps[stepIndex] = {
           ...newSteps[stepIndex],
-          image: downloadUrl,
+          image: imageUri, // プレビュー用に表示
         };
         setSteps(newSteps);
+
+        // ローカル画像URIを更新（後でアップロード用）
+        const newLocalStepImages = [...localStepImages];
+        newLocalStepImages[stepIndex] = imageUri;
+        setLocalStepImages(newLocalStepImages);
       }
 
-      setSnackbarMessage("画像をアップロードしました");
+      setSnackbarMessage(
+        "画像が選択されました（保存時にアップロードされます）"
+      );
+      setSnackbarVisible(true);
     } catch (err) {
-      console.error("画像アップロードエラー:", err);
-      setSnackbarMessage("画像のアップロードに失敗しました");
-    } finally {
-      setIsUploading(false);
+      console.error("画像選択エラー:", err);
+      setSnackbarMessage("画像の選択に失敗しました");
       setSnackbarVisible(true);
     }
   };
 
   // 写真を撮影
   const handleTakePhoto = async () => {
-    if (!currentImageTarget || !id) return;
+    if (!currentImageTarget) return;
 
     try {
       setImageDialogVisible(false);
@@ -228,44 +230,37 @@ export default function EditRecipeScreen() {
 
       if (!imageUri) return; // 写真撮影キャンセル
 
-      setIsUploading(true);
-      setSnackbarMessage("画像をアップロード中...");
-      setSnackbarVisible(true);
-
       if (currentImageTarget.type === "main") {
-        // メイン画像をアップロード
-        const downloadUrl = await imageService.uploadRecipeImage(
-          id,
-          imageUri,
-          "main"
-        );
-        setMainImage(downloadUrl);
+        // メイン画像のローカルURIを保存（まだアップロードしない）
+        setMainImage(imageUri); // プレビュー用に表示
+        setLocalMainImage(imageUri); // 後でアップロード用に保持
       } else if (
         currentImageTarget.type === "step" &&
         typeof currentImageTarget.index === "number"
       ) {
-        // 手順画像をアップロード
+        // 手順画像のローカルURIを保存（まだアップロードしない）
         const stepIndex = currentImageTarget.index;
-        const downloadUrl = await imageService.uploadRecipeImage(
-          id,
-          imageUri,
-          `step_${stepIndex + 1}`
-        );
 
         const newSteps = [...steps];
         newSteps[stepIndex] = {
           ...newSteps[stepIndex],
-          image: downloadUrl,
+          image: imageUri, // プレビュー用に表示
         };
         setSteps(newSteps);
+
+        // ローカル画像URIを更新（後でアップロード用）
+        const newLocalStepImages = [...localStepImages];
+        newLocalStepImages[stepIndex] = imageUri;
+        setLocalStepImages(newLocalStepImages);
       }
 
-      setSnackbarMessage("画像をアップロードしました");
+      setSnackbarMessage(
+        "画像が撮影されました（保存時にアップロードされます）"
+      );
+      setSnackbarVisible(true);
     } catch (err) {
-      console.error("画像アップロードエラー:", err);
-      setSnackbarMessage("画像のアップロードに失敗しました");
-    } finally {
-      setIsUploading(false);
+      console.error("画像撮影エラー:", err);
+      setSnackbarMessage("画像の撮影に失敗しました");
       setSnackbarVisible(true);
     }
   };
@@ -282,6 +277,7 @@ export default function EditRecipeScreen() {
           // Firebase Storageからの削除はオプション
           // imageService.deleteImage(mainImage);
           setMainImage("");
+          setLocalMainImage(null); // ローカルURIもクリア
           setSnackbarMessage("メイン画像を削除しました");
           setSnackbarVisible(true);
         }
@@ -303,6 +299,12 @@ export default function EditRecipeScreen() {
             image: undefined,
           };
           setSteps(newSteps);
+
+          // ローカル画像URIもクリア
+          const newLocalStepImages = [...localStepImages];
+          newLocalStepImages[stepIndex] = null;
+          setLocalStepImages(newLocalStepImages);
+
           setSnackbarMessage("手順画像を削除しました");
           setSnackbarVisible(true);
         }
@@ -340,6 +342,7 @@ export default function EditRecipeScreen() {
   // 手順の追加
   const addStep = () => {
     setSteps([...steps, { description: "" }]);
+    setLocalStepImages([...localStepImages, null]); // 新しい手順に対してローカルURIを追加
   };
 
   // 手順の削除
@@ -347,6 +350,11 @@ export default function EditRecipeScreen() {
     const newSteps = [...steps];
     newSteps.splice(index, 1);
     setSteps(newSteps);
+
+    // ローカル画像URIも削除
+    const newLocalStepImages = [...localStepImages];
+    newLocalStepImages.splice(index, 1);
+    setLocalStepImages(newLocalStepImages);
   };
 
   // 手順の更新
@@ -379,54 +387,92 @@ export default function EditRecipeScreen() {
       return;
     }
 
-    // Firebaseでは数値型として保存するため、文字列から数値に変換
-    const prepTimeNum = parseInt(prepTime, 10) || 0;
-    const cookTimeNum = parseInt(cookTime, 10) || 0;
-    const servingsNum = parseInt(servings, 10) || 2;
-
-    // レシピの更新データを作成
-    const recipeUpdate: RecipeUpdate = {
-      title,
-      description,
-      prepTime: prepTimeNum.toString(),
-      cookTime: cookTimeNum.toString(),
-      servings: servingsNum,
-      difficulty,
-      tags,
-      isPublic,
-      image: mainImage || undefined,
-      ingredients: ingredients.map((ing) => {
-        // 数量と単位を分離（例: "100g" -> { quantity: 100, unit: "g" }）
-        let quantity = 0;
-        let unit = "";
-
-        if (ing.amount) {
-          const match = ing.amount.match(/(\d+\.?\d*|\.\d+)\s*([^\d]*)/);
-          if (match) {
-            quantity = parseFloat(match[1]) || 0;
-            unit = match[2]?.trim() || "";
-          } else {
-            unit = ing.amount.trim();
-          }
-        }
-
-        return {
-          name: ing.name,
-          quantity,
-          unit,
-          note: "",
-        };
-      }),
-      steps: steps.map((step) => ({
-        instruction: step.description,
-        imageUrl: step.image,
-      })),
-    };
-
     setIsSaving(true);
+    setIsUploading(true);
+    setSnackbarMessage("レシピを保存中...");
+    setSnackbarVisible(true);
+
     try {
+      // 1. メイン画像のアップロード（必要な場合）
+      let finalMainImageUrl = mainImage;
+      if (localMainImage && localMainImage === mainImage) {
+        // ローカルURIとプレビュー用URIが同じ場合は新規/変更された画像なのでアップロード
+        finalMainImageUrl = await imageService.uploadRecipeImage(
+          id,
+          localMainImage,
+          "main"
+        );
+      }
+
+      // 2. 手順画像のアップロード（必要な場合）
+      const updatedSteps = [...steps];
+      for (let i = 0; i < steps.length; i++) {
+        const localUri = localStepImages[i];
+        // ローカルURIがあり、かつステップ画像と一致する場合（新規/変更された画像）
+        if (localUri && localUri === steps[i].image) {
+          const downloadUrl = await imageService.uploadRecipeImage(
+            id,
+            localUri,
+            `step_${i + 1}`
+          );
+          updatedSteps[i] = {
+            ...updatedSteps[i],
+            image: downloadUrl,
+          };
+        }
+      }
+
+      // Firebaseでは数値型として保存するため、文字列から数値に変換
+      const prepTimeNum = parseInt(prepTime, 10) || 0;
+      const cookTimeNum = parseInt(cookTime, 10) || 0;
+      const servingsNum = parseInt(servings, 10) || 2;
+
+      // レシピの更新データを作成（アップロード後のURLを使用）
+      const recipeUpdate: RecipeUpdate = {
+        title,
+        description,
+        prepTime: prepTimeNum.toString(),
+        cookTime: cookTimeNum.toString(),
+        servings: servingsNum,
+        difficulty,
+        tags,
+        isPublic,
+        image: finalMainImageUrl || undefined,
+        ingredients: ingredients.map((ing) => {
+          // 数量と単位を分離（例: "100g" -> { quantity: 100, unit: "g" }）
+          let quantity = 0;
+          let unit = "";
+
+          if (ing.amount) {
+            const match = ing.amount.match(/(\d+\.?\d*|\.\d+)\s*([^\d]*)/);
+            if (match) {
+              quantity = parseFloat(match[1]) || 0;
+              unit = match[2]?.trim() || "";
+            } else {
+              unit = ing.amount.trim();
+            }
+          }
+
+          return {
+            name: ing.name,
+            quantity,
+            unit,
+            note: "",
+          };
+        }),
+        steps: updatedSteps.map((step) => ({
+          instruction: step.description,
+          imageUrl: step.image,
+        })),
+      };
+
+      // 3. レシピデータを更新
       const result = await updateRecipe(id, recipeUpdate);
       if (result) {
+        // 保存後、ローカル画像リファレンスをクリア
+        setLocalMainImage(null);
+        setLocalStepImages(Array(steps.length).fill(null));
+
         setSnackbarMessage("レシピを更新しました");
         setSnackbarVisible(true);
         // 詳細画面へ戻る（遅延させてSnackbarを表示する）
@@ -449,6 +495,7 @@ export default function EditRecipeScreen() {
       setSnackbarVisible(true);
     } finally {
       setIsSaving(false);
+      setIsUploading(false);
     }
   };
 
@@ -828,6 +875,7 @@ const makeStyle = (theme: MD3Theme) =>
       justifyContent: "center",
       alignItems: "center",
       padding: 16,
+      backgroundColor: theme.colors.background,
     },
     scrollView: {
       flex: 1,
