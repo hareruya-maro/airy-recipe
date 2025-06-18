@@ -7,6 +7,7 @@ import {
   RefreshControl,
   StyleSheet,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from "react-native";
 import {
@@ -70,6 +71,21 @@ export default function HomeScreen() {
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+
+  // 画面サイズに基づいて列数を決定
+  const windowDimensions = useWindowDimensions();
+  const screenWidth = windowDimensions.width;
+  const getColumnCount = (): number => {
+    if (screenWidth >= 1000) return 3; // 大きなタブレット
+    if (screenWidth >= 600) return 2; // 小〜中サイズタブレット
+    return 1; // スマートフォン
+  };
+  const [numColumns, setNumColumns] = useState(getColumnCount());
+
+  // 画面サイズの変更を検出して列数を更新
+  useEffect(() => {
+    setNumColumns(getColumnCount());
+  }, [screenWidth]);
 
   // コンポーネントのマウント時にFirestoreからレシピを取得
   useEffect(() => {
@@ -137,7 +153,10 @@ export default function HomeScreen() {
   const renderRecipeCard = ({ item }: { item: Recipe }) => (
     <TouchableOpacity
       onPress={() => handleRecipeSelect(item)}
-      style={{ overflow: "hidden" }}
+      style={[
+        styles.cardContainer,
+        { width: numColumns > 1 ? `${100 / numColumns - 2}%` : "100%" },
+      ]}
     >
       <Card style={styles.card} mode="elevated">
         <Card.Cover source={{ uri: item.image }} style={styles.cardImage} />
@@ -199,6 +218,7 @@ export default function HomeScreen() {
         </View>
       ) : (
         <FlatList
+          key={`recipe-list-${numColumns}`}
           data={recipes}
           renderItem={renderRecipeCard}
           keyExtractor={(item) => item.id}
@@ -207,6 +227,8 @@ export default function HomeScreen() {
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
+          numColumns={numColumns}
+          columnWrapperStyle={numColumns > 1 ? styles.columnWrapper : undefined}
         />
       )}
 
@@ -245,8 +267,17 @@ const styles = StyleSheet.create({
   recipeList: {
     padding: 8,
   },
-  card: {
+  columnWrapper: {
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+  },
+  cardContainer: {
+    overflow: "hidden",
     marginBottom: 16,
+  },
+  card: {
+    flex: 1,
+    marginHorizontal: 4,
   },
   cardImage: {
     height: 180,

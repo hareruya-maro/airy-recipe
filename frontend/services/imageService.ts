@@ -1,4 +1,4 @@
-import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
+import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import ImagePicker from "react-native-image-crop-picker";
 import { auth, storage } from "../config/firebase";
 
@@ -16,21 +16,15 @@ const resizeAndCompressImage = async (
 ): Promise<{ uri: string; width: number; height: number }> => {
   try {
     // 画像を処理（リサイズ＆圧縮）
-    const manipResult = await manipulateAsync(
-      uri,
-      [
-        {
-          resize: {
-            width: MAX_IMAGE_SIZE,
-            height: MAX_IMAGE_SIZE,
-          },
-        },
-      ],
-      {
-        compress: JPEG_QUALITY / 100,
-        format: SaveFormat.JPEG,
-      }
-    );
+    const context = ImageManipulator.manipulate(uri);
+    const imageRef = await context
+      .resize({ width: MAX_IMAGE_SIZE, height: MAX_IMAGE_SIZE })
+      .renderAsync();
+
+    const manipResult = await imageRef.saveAsync({
+      compress: JPEG_QUALITY / 100,
+      format: SaveFormat.JPEG,
+    });
 
     return {
       uri: manipResult.uri,
@@ -102,10 +96,11 @@ const pickFromGallery = async (): Promise<string | null> => {
     const image = await ImagePicker.openPicker({
       width: 1200,
       height: 1200,
+      freeStyleCropEnabled: true,
       cropping: true,
       cropperCircleOverlay: false,
-      compressImageMaxWidth: 1200,
-      compressImageMaxHeight: 1200,
+      // compressImageMaxWidth: 1200,
+      // compressImageMaxHeight: 1200,
       compressImageQuality: 0.8,
       mediaType: "photo",
     });
@@ -127,6 +122,7 @@ const takePhoto = async (): Promise<string | null> => {
       width: 1200,
       height: 1200,
       cropping: true,
+      freeStyleCropEnabled: true,
       compressImageMaxWidth: 1200,
       compressImageMaxHeight: 1200,
       compressImageQuality: 0.8,

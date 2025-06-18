@@ -15,6 +15,7 @@ import {
   Chip,
   Dialog,
   IconButton,
+  MD3Theme,
   Portal,
   Snackbar,
   Surface,
@@ -34,6 +35,7 @@ export default function EditRecipeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const theme = useTheme();
+  const styles = makeStyle(theme);
 
   // レシピの初期ロード済みかどうかを追跡
   const isInitialLoadDone = useRef(false);
@@ -819,177 +821,179 @@ export default function EditRecipeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 16,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  formSection: {
-    padding: 16,
-    margin: 16,
-    borderRadius: 8,
-  },
-  input: {
-    marginBottom: 16,
-  },
-  row: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  halfInput: {
-    width: "48%",
-  },
-  tagsSection: {
-    marginVertical: 16,
-  },
-  publicSection: {
-    marginVertical: 16,
-  },
-  publicToggle: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 8,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  tagsContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-  },
-  tag: {
-    margin: 4,
-  },
-  ingredientsSection: {
-    marginVertical: 16,
-  },
-  ingredientRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  stepsSection: {
-    marginVertical: 16,
-  },
-  stepContainer: {
-    marginBottom: 16,
-    backgroundColor: "#f5f5f5",
-    borderRadius: 8,
-    padding: 8,
-  },
-  stepHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  placeholderText: {
-    fontStyle: "italic",
-    color: "#888",
-    marginVertical: 8,
-  },
-  button: {
-    marginTop: 16,
-  },
-  saveButton: {
-    position: "absolute",
-    left: "10%",
-    right: "10%",
-    width: "80%",
-    borderRadius: 30,
-    elevation: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-  },
-  saveButtonContent: {
-    height: 50,
-  },
-  saveButtonLabel: {
-    fontSize: 18,
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-  },
-  mainImageSection: {
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    marginBottom: 8,
-  },
-  mainImageContainer: {
-    width: "100%",
-    height: 200,
-    borderRadius: 8,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#e0e0e0",
-    marginBottom: 16,
-  },
-  mainImage: {
-    width: "100%",
-    height: "100%",
-  },
-  mainImagePlaceholder: {
-    justifyContent: "center",
-    alignItems: "center",
-    width: "100%",
-    height: "100%",
-  },
-  stepImageContainer: {
-    width: "100%",
-    height: 150,
-    borderRadius: 8,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#f0f0f0",
-    marginTop: 8,
-  },
-  stepImageWrapper: {
-    width: "100%",
-    height: "100%",
-    position: "relative",
-  },
-  stepImage: {
-    width: "100%",
-    height: "100%",
-  },
-  editImageIcon: {
-    position: "absolute",
-    bottom: 8,
-    right: 8,
-    elevation: 3,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-  },
-  stepImagePlaceholder: {
-    justifyContent: "center",
-    alignItems: "center",
-    width: "100%",
-    height: "100%",
-  },
-  stepImageText: {
-    marginTop: 4,
-    fontSize: 14,
-    color: "#666",
-  },
-  imageButton: {
-    marginVertical: 8,
-  },
-  deleteButton: {
-    borderColor: "#f44336",
-    marginTop: 16,
-  },
-});
+const makeStyle = (theme: MD3Theme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      padding: 16,
+    },
+    scrollView: {
+      flex: 1,
+      backgroundColor: theme.colors.background,
+    },
+    formSection: {
+      padding: 16,
+      margin: 16,
+      borderRadius: 8,
+    },
+    input: {
+      marginBottom: 16,
+    },
+    row: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+    },
+    halfInput: {
+      width: "48%",
+    },
+    tagsSection: {
+      marginVertical: 16,
+    },
+    publicSection: {
+      marginVertical: 16,
+    },
+    publicToggle: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 8,
+    },
+    sectionHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 8,
+    },
+    tagsContainer: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+    },
+    tag: {
+      margin: 4,
+    },
+    ingredientsSection: {
+      marginVertical: 16,
+    },
+    ingredientRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 8,
+    },
+    stepsSection: {
+      marginVertical: 16,
+    },
+    stepContainer: {
+      marginBottom: 16,
+      backgroundColor: "#f5f5f5",
+      borderRadius: 8,
+      padding: 8,
+    },
+    stepHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    placeholderText: {
+      fontStyle: "italic",
+      color: "#888",
+      marginVertical: 8,
+    },
+    button: {
+      marginTop: 16,
+    },
+    saveButton: {
+      position: "absolute",
+      left: "10%",
+      right: "10%",
+      width: "80%",
+      borderRadius: 30,
+      elevation: 8,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 6,
+    },
+    saveButtonContent: {
+      height: 50,
+    },
+    saveButtonLabel: {
+      fontSize: 18,
+    },
+    loadingText: {
+      marginTop: 16,
+      fontSize: 16,
+    },
+    mainImageSection: {
+      marginBottom: 16,
+    },
+    sectionTitle: {
+      marginBottom: 8,
+    },
+    mainImageContainer: {
+      width: "100%",
+      height: 200,
+      borderRadius: 8,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: "#e0e0e0",
+      marginBottom: 16,
+    },
+    mainImage: {
+      width: "100%",
+      height: "100%",
+    },
+    mainImagePlaceholder: {
+      justifyContent: "center",
+      alignItems: "center",
+      width: "100%",
+      height: "100%",
+    },
+    stepImageContainer: {
+      width: "100%",
+      height: 150,
+      borderRadius: 8,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: "#f0f0f0",
+      marginTop: 8,
+    },
+    stepImageWrapper: {
+      width: "100%",
+      height: "100%",
+      position: "relative",
+    },
+    stepImage: {
+      width: "100%",
+      height: "100%",
+    },
+    editImageIcon: {
+      position: "absolute",
+      bottom: 8,
+      right: 8,
+      elevation: 3,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.3,
+      shadowRadius: 3,
+    },
+    stepImagePlaceholder: {
+      justifyContent: "center",
+      alignItems: "center",
+      width: "100%",
+      height: "100%",
+    },
+    stepImageText: {
+      marginTop: 4,
+      fontSize: 14,
+      color: "#666",
+    },
+    imageButton: {
+      marginVertical: 8,
+    },
+    deleteButton: {
+      borderColor: "#f44336",
+      marginTop: 16,
+    },
+  });
