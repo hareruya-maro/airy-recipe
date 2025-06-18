@@ -7,6 +7,35 @@ const MAX_IMAGE_SIZE = 1200;
 const JPEG_QUALITY = 85;
 
 /**
+ * 標準的な日時フォーマット文字列を生成する（yyyymmdd_hhmmss）
+ * @returns フォーマット済み日時文字列
+ */
+const generateDateTimeString = (): string => {
+  const now = new Date();
+  return `${now.getFullYear()}${String(now.getMonth() + 1).padStart(
+    2,
+    "0"
+  )}${String(now.getDate()).padStart(2, "0")}_${String(now.getHours()).padStart(
+    2,
+    "0"
+  )}${String(now.getMinutes()).padStart(2, "0")}${String(
+    now.getSeconds()
+  ).padStart(2, "0")}`;
+};
+
+/**
+ * 標準的な画像保存パスを生成する
+ * @param fileName ファイル名（拡張子含む）
+ * @param customFolder カスタムフォルダ名（オプション）
+ * @returns Firebase Storage用のパス
+ */
+const generateImagePath = (fileName: string, customFolder?: string): string => {
+  const dateTimeStr = generateDateTimeString();
+  const folder = customFolder || `recipe_images/${dateTimeStr}`;
+  return `${folder}/${fileName}`;
+};
+
+/**
  * 画像をリサイズして圧縮する
  * @param uri 元の画像URI
  * @returns 処理後の画像URI
@@ -141,12 +170,14 @@ const takePhoto = async (): Promise<string | null> => {
  * @param recipeId レシピID
  * @param imageUri 画像URI
  * @param imageType 画像タイプ（'main' または 'step_X'）
+ * @param customFolder カスタムフォルダパス（オプション）
  * @returns ダウンロードURL
  */
 const uploadRecipeImage = async (
   recipeId: string,
   imageUri: string,
-  imageType: string
+  imageType: string,
+  customFolder?: string
 ): Promise<string> => {
   try {
     const currentUser = auth.currentUser;
@@ -155,18 +186,9 @@ const uploadRecipeImage = async (
       throw new Error("ログインしていません");
     }
 
-    // 年月日_時分秒のフォーマットを生成
-    const now = new Date();
-    const dateTimeStr = `${now.getFullYear()}${String(
-      now.getMonth() + 1
-    ).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}_${String(
-      now.getHours()
-    ).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}${String(
-      now.getSeconds()
-    ).padStart(2, "0")}`;
-
-    // 新しいパスフォーマット: recipe_images/年月日_時分秒/image.jpg
-    const path = `recipe_images/${dateTimeStr}/${imageType}.jpg`;
+    // 標準パスフォーマットを使用: recipe_images/年月日_時分秒/imageType.jpg
+    const fileName = `${imageType}.jpg`;
+    const path = generateImagePath(fileName, customFolder);
 
     return await uploadImageToStorage(imageUri, path);
   } catch (error) {
@@ -200,10 +222,67 @@ const deleteImage = async (url: string): Promise<void> => {
   }
 };
 
+/**
+ * 複数の画像をまとめてアップロードする
+ * @param images アップロードする画像URIの配列
+ * @param customFolder カスタムフォルダ名（オプション）
+ * @param progressCallback アップロード進捗コールバック（オプション）
+ * @returns アップロードされた画像URLの配列とフォルダパス
+ */
+const uploadMultipleImages = async (
+  images: string[],
+  customFolder?: string,
+  progressCallback?: (index: number, progress: number) => void
+): Promise<{ folder: string; urls: string[] }> => {
+  try {
+    // フォルダ名を生成
+    const dateTimeStr = generateDateTimeString();
+    const folder = customFolder || `recipe_images/${dateTimeStr}`;
+
+    // 各画像をアップロード
+    const uploadPromises = images.map(async (imageUri, index) => {
+      // 画像をリサイズ・圧縮
+      const processedImage = await resizeAndCompressImage(imageUri);
+
+      // パス生成
+      const fileName = `image_${index}.jpg`;
+      const path = `${folder}/${fileName}`;
+
+      // Firebase Storageにアップロード
+      const storageRef = storage.ref(path);
+      await storageRef.putFile(processedImage.uri);
+
+      // 進捗コールバックがあれば呼び出す
+      if (progressCallback) {
+        progressCallback(index, 100);
+      }
+
+      // ダウンロードURLを取得
+      const downloadUrl = await storageRef.getDownloadURL();
+
+      return downloadUrl;
+    });
+
+    const downloadUrls = await Promise.all(uploadPromises);
+
+    return {
+      folder,
+      urls: downloadUrls,
+    };
+  } catch (error) {
+    console.error("複数画像アップロードエラー:", error);
+    throw error;
+  }
+};
+
+// エクスポートするサービス関数
 export const imageService = {
   pickFromGallery,
   takePhoto,
   uploadRecipeImage,
+  uploadMultipleImages,
   deleteImage,
   resizeAndCompressImage,
+  generateDateTimeString,
+  generateImagePath,
 };

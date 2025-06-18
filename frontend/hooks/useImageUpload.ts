@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useWindowDimensions } from "react-native";
 import ImagePicker from "react-native-image-crop-picker";
 import { v4 as uuidv4 } from "uuid";
-import { auth, storage } from "../config/firebase";
+import { auth } from "../config/firebase";
+import { imageService } from "../services/imageService";
 
 // 複数画像の情報を管理するための型
 export type UploadImage = {
@@ -168,64 +169,45 @@ export const useImageUpload = () => {
       setIsUploading(true);
       setError(null);
 
-      // フォルダ名が指定されていない場合は現在のタイムスタンプを使用
-      // 年月日_時分秒のフォーマット
-      let folder;
-      if (folderName) {
-        folder = folderName;
-      } else {
-        const now = new Date();
-        folder = `recipe_images/${now.getFullYear()}${String(
-          now.getMonth() + 1
-        ).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}_${String(
-          now.getHours()
-        ).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}${String(
-          now.getSeconds()
-        ).padStart(2, "0")}`;
+      // 各画像のURIを抽出
+      const imageUris = images.map((img) => img.uri);
+
+      // imageService の集約された関数を使用して画像をアップロード
+      const result = await imageService.uploadMultipleImages(
+        imageUris,
+        folderName,
+        (index, progress) => {
+          // アップロード進捗を更新
+          setImages((prev) => {
+            const newImages = [...prev];
+            if (newImages[index]) {
+              newImages[index] = {
+                ...newImages[index],
+                status: progress === 100 ? "complete" : "uploading",
+                progress,
+              };
+            }
+            return newImages;
+          });
+        }
+      );
+
+      // 結果を受け取って状態を更新
+      if (result) {
+        const { urls } = result;
+        // 画像の状態を更新
+        setImages((prev) =>
+          prev.map((img, idx) => ({
+            ...img,
+            status: "complete",
+            progress: 100,
+            downloadUrl: idx < urls.length ? urls[idx] : undefined,
+          }))
+        );
       }
 
-      const uploadPromises = images.map(async (image, index) => {
-        // アップロード中のステータスを更新
-        setImages((prev) =>
-          prev.map((img) =>
-            img.id === image.id
-              ? { ...img, status: "uploading", progress: 0 }
-              : img
-          )
-        );
-
-        // 画像ファイルのBlobを取得
-        const response = await fetch(image.uri);
-        const blob = await response.blob();
-
-        // FirebaseのStorageリファレンスを作成
-        const imageRef = storage.ref(`${folder}/image_${index}.jpg`);
-
-        // 画像をアップロード
-        await imageRef.putFile(image.uri);
-
-        // ダウンロードURLを取得
-        const downloadUrl = await imageRef.getDownloadURL();
-
-        // 完了したステータスを更新
-        setImages((prev) =>
-          prev.map((img) =>
-            img.id === image.id
-              ? { ...img, status: "complete", progress: 100, downloadUrl }
-              : img
-          )
-        );
-
-        return { id: image.id, downloadUrl };
-      });
-
-      const results = await Promise.all(uploadPromises);
       setIsUploading(false);
-
-      return {
-        folder,
-        urls: results.map((r) => r.downloadUrl),
-      };
+      return result;
     } catch (err) {
       setIsUploading(false);
       setError("画像のアップロード中にエラーが発生しました");

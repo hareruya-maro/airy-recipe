@@ -934,7 +934,7 @@ const makeStyle = (theme: MD3Theme) =>
     },
     stepContainer: {
       marginBottom: 16,
-      backgroundColor: "#f5f5f5",
+      backgroundColor: theme.colors.background,
       borderRadius: 8,
       padding: 8,
     },
@@ -1004,7 +1004,7 @@ const makeStyle = (theme: MD3Theme) =>
       borderRadius: 8,
       justifyContent: "center",
       alignItems: "center",
-      backgroundColor: "#f0f0f0",
+      backgroundColor: theme.colors.surfaceVariant,
       marginTop: 8,
     },
     stepImageWrapper: {
@@ -1035,7 +1035,7 @@ const makeStyle = (theme: MD3Theme) =>
     stepImageText: {
       marginTop: 4,
       fontSize: 14,
-      color: "#666",
+      color: theme.colors.onSurfaceVariant,
     },
     imageButton: {
       marginVertical: 8,

@@ -22,6 +22,7 @@ import {
   UploadImage,
   useImageUpload,
 } from "../../hooks/useImageUpload";
+import { imageService } from "../../services/imageService";
 
 export type RecipeImageUploaderProps = {
   onUploadComplete?: (result: { folder: string; urls: string[] }) => void;
@@ -78,15 +79,9 @@ export const RecipeImageUploader = ({
   // Firebase Storageにアップロードする（通常のアップロード）
   const handleUpload = async () => {
     if (images.length > 0) {
-      // フォルダ名を生成（例：recipe_images/年月日_時分秒）
-      const now = new Date();
-      const folderName = `recipe_images/${now.getFullYear()}${String(
-        now.getMonth() + 1
-      ).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}_${String(
-        now.getHours()
-      ).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}${String(
-        now.getSeconds()
-      ).padStart(2, "0")}`;
+      // imageServiceを使用してフォルダ名を自動生成
+      const dateTimeStr = imageService.generateDateTimeString();
+      const folderName = `recipe_images/${dateTimeStr}`;
 
       setProcessingMode("upload");
 
