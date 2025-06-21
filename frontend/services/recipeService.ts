@@ -4,6 +4,7 @@ import {
   doc,
   getDoc,
   getDocs,
+  onSnapshot,
   or,
   query,
   serverTimestamp,
@@ -326,6 +327,68 @@ export const recipeService = {
     } catch (error: any) {
       console.error("レシピ更新エラー:", error);
       throw error;
+    }
+  },
+
+  // リアルタイムでユーザーが閲覧可能なレシピの変更を監視
+  subscribeToAccessibleRecipes: (
+    userId: string | null,
+    callback: (recipes: Recipe[]) => void
+  ) => {
+    try {
+      if (!userId) {
+        // ユーザーIDがない場合は空配列を返す
+        callback([]);
+        return () => {}; // 空のunsubscribe関数を返す
+      }
+
+      const recipesRef = collection(db, "recipes");
+      const recipesQuery = query(
+        recipesRef,
+        or(
+          where("isSystemRecipe", "==", true),
+          where("isPublic", "==", true),
+          where("createdBy", "==", userId)
+        )
+      );
+
+      // onSnapshotを使ってリアルタイムアップデートを監視
+      const unsubscribe = onSnapshot(
+        recipesQuery,
+        (snapshot) => {
+          const recipes = snapshot.docs
+            .map((doc) => {
+              const data = doc.data() as Recipe;
+              return {
+                ...data,
+                id: doc.id,
+              };
+            })
+            .filter(
+              (recipe) =>
+                recipe.isSystemRecipe ||
+                recipe.createdBy === userId ||
+                recipe.isPublic
+            )
+            // createdAtの降順でソート（新しい順）
+            .sort((a, b) => {
+              if (!a.createdAt) return 1;
+              if (!b.createdAt) return -1;
+              return b.createdAt.seconds - a.createdAt.seconds;
+            });
+
+          callback(recipes);
+        },
+        (error) => {
+          console.error("レシピ監視エラー:", error);
+          callback([]);
+        }
+      );
+
+      return unsubscribe;
+    } catch (error) {
+      console.error("レシピ監視設定エラー:", error);
+      return () => {}; // エラーの場合も空のunsubscribe関数を返す
     }
   },
 };

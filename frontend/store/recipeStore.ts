@@ -55,14 +55,18 @@ type RecipeState = {
   isDialogVisible: boolean;
   isVideoModalVisible: boolean;
   currentVideoUrl: string | null;
+  unsubscribeRecipes: (() => void) | null; // リスナーの登録解除関数
 
   // データ取得アクション
   fetchRecipes: () => Promise<void>;
   fetchRecipeDetails: (recipeId: string) => Promise<Recipe>;
+  subscribeToRecipes: () => void; // リアルタイム監視を開始
+  unsubscribeFromRecipes: () => void; // リアルタイム監視を停止
 
   // レシピ関連アクション
   setCurrentRecipe: (recipe: Recipe) => void;
   updateRecipe: (recipeId: string, updates: RecipeUpdate) => Promise<boolean>;
+  setRecipes: (recipes: Recipe[]) => void;
 
   // ステップナビゲーション
   nextStep: () => void;
@@ -141,6 +145,7 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
   isDialogVisible: false,
   isVideoModalVisible: false,
   currentVideoUrl: null,
+  unsubscribeRecipes: null,
 
   // Firestoreからレシピを取得
   fetchRecipes: async () => {
@@ -312,4 +317,61 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
       isVideoModalVisible: false,
       currentVideoUrl: null,
     }),
+
+  // レシピを直接設定するメソッド
+  setRecipes: (recipes) => set({ recipes }),
+
+  // リアルタイムリスナーを登録
+  subscribeToRecipes: () => {
+    const userId = auth.currentUser?.uid || null;
+
+    // 既存のリスナーが存在する場合は先に解除
+    const currentUnsubscribe = get().unsubscribeRecipes;
+    if (currentUnsubscribe) {
+      currentUnsubscribe();
+    }
+
+    set({ isLoadingRecipes: true });
+
+    const unsubscribe = recipeService.subscribeToAccessibleRecipes(
+      userId,
+      (firestoreRecipes) => {
+        // Firestoreのレシピをフロントエンド用に変換
+        const recipes = firestoreRecipes.map(
+          (recipe) =>
+            ({
+              id: recipe.id,
+              title: recipe.title,
+              description: recipe.description,
+              prepTime: `${recipe.prepTime}`,
+              cookTime: `${recipe.cookTime}`,
+              servings: recipe.servings,
+              difficulty: recipe.difficulty,
+              image: recipe.image || "",
+              ingredients: [], // 詳細取得時に設定
+              steps: [], // 詳細取得時に設定
+              tips: [], // 詳細取得時に設定
+              tags: recipe.tags || [],
+              createdBy: recipe.createdBy,
+              isSystemRecipe: recipe.isSystemRecipe,
+              isPublic: recipe.isPublic,
+              createdAt: recipe.createdAt,
+            } as Recipe)
+        );
+
+        set({ recipes, isLoadingRecipes: false });
+      }
+    );
+
+    set({ unsubscribeRecipes: unsubscribe });
+  },
+
+  // リスナーの登録解除
+  unsubscribeFromRecipes: () => {
+    const { unsubscribeRecipes } = get();
+    if (unsubscribeRecipes) {
+      unsubscribeRecipes();
+      set({ unsubscribeRecipes: null });
+    }
+  },
 }));

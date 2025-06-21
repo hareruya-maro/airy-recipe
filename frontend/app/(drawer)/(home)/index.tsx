@@ -60,12 +60,8 @@ const formatDate = (timestamp: any): string => {
 export default function HomeScreen() {
   const { colors } = useTheme();
   const { recipes, fetchRecipes, isLoadingRecipes } = useRecipeStore();
-  const {
-    checkIfModelDownloaded,
-    fetchDownloadedModels,
-    showDownloadModal,
-    isModelDownloaded,
-  } = useModelStore();
+  const { checkIfModelDownloaded, fetchDownloadedModels, showDownloadModal } =
+    useModelStore();
   const router = useRouter();
   const navigation = useNavigation<any>();
   const [snackbarVisible, setSnackbarVisible] = useState(false);
@@ -87,10 +83,19 @@ export default function HomeScreen() {
     setNumColumns(getColumnCount());
   }, [screenWidth]);
 
-  // コンポーネントのマウント時にFirestoreからレシピを取得
+  // コンポーネントのマウント時にFirestoreからレシピを監視開始
   useEffect(() => {
-    fetchRecipes();
-  }, [fetchRecipes]);
+    const { subscribeToRecipes, unsubscribeFromRecipes } =
+      useRecipeStore.getState();
+
+    // リアルタイム監視を開始
+    subscribeToRecipes();
+
+    // コンポーネントのアンマウント時にリスナーを解除
+    return () => {
+      unsubscribeFromRecipes();
+    };
+  }, []);
 
   // コンポーネントのマウント時にモデルがダウンロード済みかどうかを確認
   useEffect(() => {
@@ -128,10 +133,16 @@ export default function HomeScreen() {
   // 引っ張って更新する処理
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchRecipes();
-    setRefreshing(false);
-    setSnackbarMessage("レシピを更新しました");
-    setSnackbarVisible(true);
+    // リアルタイムリスナーを再登録する
+    const { subscribeToRecipes } = useRecipeStore.getState();
+    subscribeToRecipes();
+
+    // 少し待ってリフレッシュ状態を解除
+    setTimeout(() => {
+      setRefreshing(false);
+      setSnackbarMessage("レシピを更新しました");
+      setSnackbarVisible(true);
+    }, 500);
   };
 
   // レシピカード選択時の処理
