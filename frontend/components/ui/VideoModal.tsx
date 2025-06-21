@@ -7,7 +7,7 @@ import React, {
   useState,
 } from "react";
 import { BackHandler, Dimensions, StyleSheet, Text, View } from "react-native";
-import { Button, IconButton, Modal } from "react-native-paper";
+import { Button, Modal } from "react-native-paper";
 import YoutubeIframe, { YoutubeIframeRef } from "react-native-youtube-iframe";
 
 // 外部から呼び出せるメソッドの型定義
@@ -15,7 +15,6 @@ export type VideoModalRef = {
   play: () => void;
   pause: () => void;
   togglePlay: () => void;
-  toggleFullscreen: () => void;
 };
 
 type VideoModalProps = {
@@ -34,14 +33,11 @@ export const VideoModal = forwardRef<VideoModalRef, VideoModalProps>(
 
     // 動画再生状態
     const [playing, setPlaying] = useState(false);
-    // 全画面表示状態
-    const [isFullscreen, setIsFullscreen] = useState(false);
 
     // YouTubeプレーヤーのイベントハンドラー
     const onStateChange = useCallback((state: string) => {
       if (state === "ended") {
         setPlaying(false);
-        setIsFullscreen(false);
       } else if (state === "playing") {
         setPlaying(true);
       } else if (state === "paused") {
@@ -65,32 +61,13 @@ export const VideoModal = forwardRef<VideoModalRef, VideoModalProps>(
           console.log("再生/停止切り替え");
           setPlaying((prev) => !prev);
         },
-        toggleFullscreen: () => {
-          console.log("全画面表示切り替え");
-          if (youtubeRef.current) {
-            // 全画面表示の切り替え
-            if (isFullscreen) {
-              // 全画面から戻る処理
-              setIsFullscreen(false);
-            } else {
-              // 全画面表示にする処理
-              setIsFullscreen(true);
-              // 再生も開始
-              setPlaying(true);
-            }
-          }
-        },
       }),
-      [isFullscreen]
+      []
     );
 
     // 全画面モードでハードウェアバックボタンの処理（Android用）
     useEffect(() => {
       const backAction = () => {
-        if (isFullscreen) {
-          setIsFullscreen(false);
-          return true; // イベントをキャプチャして標準の戻る処理を止める
-        }
         return false; // 標準の戻る処理を実行
       };
 
@@ -100,7 +77,7 @@ export const VideoModal = forwardRef<VideoModalRef, VideoModalProps>(
       );
 
       return () => backHandler.remove();
-    }, [isFullscreen]);
+    }, []);
 
     // YouTubeの動画IDを抽出する関数
     const extractYouTubeID = (url: string | null): string | undefined => {
@@ -132,68 +109,24 @@ export const VideoModal = forwardRef<VideoModalRef, VideoModalProps>(
     // モーダルを閉じるときは再生も停止する
     const handleClose = () => {
       setPlaying(false);
-      setIsFullscreen(false);
       onClose();
-    };
-
-    // プレーヤーコントロールを表示
-    const renderPlayerControls = () => {
-      return (
-        <View style={styles.playerControls}>
-          <IconButton
-            icon={playing ? "pause" : "play"}
-            iconColor="#FFFFFF"
-            size={28}
-            onPress={() => setPlaying((prev) => !prev)}
-          />
-          <IconButton
-            icon={isFullscreen ? "fullscreen-exit" : "fullscreen"}
-            iconColor="#FFFFFF"
-            size={28}
-            onPress={() => setIsFullscreen((prev) => !prev)}
-          />
-        </View>
-      );
     };
 
     return (
       <Modal
         visible={visible}
         onDismiss={handleClose}
-        contentContainerStyle={[
-          styles.videoModalContainer,
-          isFullscreen && styles.fullscreenContainer,
-        ]}
+        contentContainerStyle={[styles.videoModalContainer]}
       >
-        <View
-          style={[
-            styles.videoModalContent,
-            isFullscreen && styles.fullscreenContent,
-          ]}
-        >
-          {!isFullscreen && (
-            <Text style={styles.videoModalTitle}>料理手順の解説動画</Text>
-          )}
+        <View style={[styles.videoModalContent]}>
+          <Text style={styles.videoModalTitle}>料理手順の解説動画</Text>
 
-          <View
-            style={[
-              styles.videoPlayerContainer,
-              isFullscreen && styles.fullscreenPlayer,
-            ]}
-          >
+          <View style={[styles.videoPlayerContainer]}>
             {videoUrl && extractYouTubeID(videoUrl) && (
               <YoutubeIframe
                 ref={youtubeRef}
-                height={
-                  isFullscreen
-                    ? Dimensions.get("window").height
-                    : (Dimensions.get("window").width - 32) * (9 / 16)
-                }
-                width={
-                  isFullscreen
-                    ? Dimensions.get("window").width
-                    : Dimensions.get("window").width - 32
-                }
+                height={(Dimensions.get("window").width - 32) * (9 / 16)}
+                width={Dimensions.get("window").width - 32}
                 videoId={extractYouTubeID(videoUrl) || ""}
                 play={playing}
                 onChangeState={onStateChange}
@@ -210,17 +143,13 @@ export const VideoModal = forwardRef<VideoModalRef, VideoModalProps>(
             )}
           </View>
 
-          {!isFullscreen && renderPlayerControls()}
-
-          {!isFullscreen && (
-            <Button
-              mode="contained"
-              onPress={handleClose}
-              style={styles.videoModalCloseButton}
-            >
-              閉じる
-            </Button>
-          )}
+          <Button
+            mode="contained"
+            onPress={handleClose}
+            style={styles.videoModalCloseButton}
+          >
+            閉じる
+          </Button>
         </View>
       </Modal>
     );
