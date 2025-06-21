@@ -1,4 +1,4 @@
-import { gemini25FlashPreview0417, vertexAI } from "@genkit-ai/vertexai";
+import { gemini25ProPreview0325, vertexAI } from "@genkit-ai/vertexai";
 import cors from "cors";
 import * as admin from "firebase-admin";
 import * as logger from "firebase-functions/logger";
@@ -26,7 +26,7 @@ const ai = genkit({
       location: LOCATION,
     }),
   ],
-  model: gemini25FlashPreview0417,
+  model: gemini25ProPreview0325,
   // プロンプトファイルのパスを設定
   promptDir: path.join(__dirname, "prompts"),
 });
@@ -36,7 +36,7 @@ const ai = genkit({
  */
 const IngredientSchema = z.object({
   name: z.string().describe("材料の名前 (例: '薄力粉', '卵')"),
-  amount: z.string().describe("材料の分量 (例: '100g', '大さじ2', '少々')"),
+  amount: z.string().describe("材料の分量 (例: '100g', '大さじ1/2', '少々')"),
 });
 
 /**

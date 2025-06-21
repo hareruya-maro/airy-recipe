@@ -38,6 +38,7 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
   const [isProcessingLLM, setIsProcessingLLM] = useState<boolean>(false);
   // 現在の認識テキストを保持するRef
   const currentTextRef = useRef<string>("");
+  const pastTextRef = useRef<string>("");
   // TTSが現在話しているかどうか
   const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
   // debounceタイマーID
@@ -160,7 +161,7 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
 
   // コマンドの処理を行う関数（debounce処理付き）
   const processWithDebounce = (text: string) => {
-    console.log("Debounce処理開始:", text);
+    console.log("Debounce処理開始:", text.replace(pastTextRef.current, ""));
     // すでにタイマーがセットされていれば解除
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
@@ -169,7 +170,8 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
     // 新たにタイマーをセット
     debounceTimerRef.current = setTimeout(() => {
       console.log("Debounce完了、コマンド処理:", text);
-      processVoiceCommand(text);
+      processVoiceCommand(text.replace(pastTextRef.current, ""));
+      pastTextRef.current = text;
       debounceTimerRef.current = null;
     }, DEBOUNCE_TIME_MS);
   };
@@ -268,17 +270,6 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
     } catch (e) {
       console.error(e);
       setError("音声認識の停止に失敗しました");
-    }
-  };
-
-  const restartVoiceRecognition = async () => {
-    try {
-      await Voice.cancel();
-      await Voice.start("ja-JP");
-      setVoiceListening(true);
-    } catch (e) {
-      console.error(e);
-      setError("音声認識の再起動に失敗しました");
     }
   };
 
@@ -461,7 +452,6 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
       );
       if (result) {
         console.log("外部コールバックでコマンドが処理されました:", text);
-        restartVoiceRecognition();
         return;
       }
     }
@@ -496,7 +486,6 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
     // ウェイクワードがない場合は処理しない
     if (!hasWakeWordFinal) {
       console.log("ウェイクワードがないため処理をスキップ:", lowerText);
-      restartVoiceRecognition();
       return;
     }
 
@@ -532,7 +521,6 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
       addConversationMessage(responseMessage, false); // システムの応答
 
       speakResponse(responseMessage);
-      restartVoiceRecognition();
       return;
     }
 
@@ -588,7 +576,6 @@ Reply with ONLY the category name from above. For example: "next_step", "show_in
           addConversationMessage(responseMessage, false);
 
           speakResponse(responseMessage);
-          restartVoiceRecognition();
           return true;
         } else if (command.includes("previous_step")) {
           previousStep();
@@ -600,7 +587,7 @@ Reply with ONLY the category name from above. For example: "next_step", "show_in
           addConversationMessage(responseMessage, false);
 
           speakResponse(responseMessage);
-          restartVoiceRecognition();
+
           return true;
         } else if (command.includes("show_ingredients")) {
           // 材料リストを表示
@@ -616,7 +603,7 @@ Reply with ONLY the category name from above. For example: "next_step", "show_in
           if (callbacks?.onShowIngredients) {
             callbacks.onShowIngredients(true);
           }
-          restartVoiceRecognition();
+
           return true;
         } else if (command.includes("show_steps")) {
           // 手順リストを表示
@@ -632,7 +619,7 @@ Reply with ONLY the category name from above. For example: "next_step", "show_in
           if (callbacks?.onShowIngredients) {
             callbacks.onShowIngredients(false); // 材料を非表示（手順を表示）
           }
-          restartVoiceRecognition();
+
           return true;
         }
       } catch (error) {
@@ -657,7 +644,7 @@ Reply with ONLY the category name from above. For example: "next_step", "show_in
       addConversationMessage(responseMessage, false); // システムの応答
 
       speakResponse(responseMessage); // TTSで応答を読み上げ
-      restartVoiceRecognition();
+
       return;
     } else if (
       commandText.includes("戻る") ||
@@ -674,7 +661,7 @@ Reply with ONLY the category name from above. For example: "next_step", "show_in
       addConversationMessage(responseMessage, false); // システムの応答
 
       speakResponse(responseMessage); // TTSで応答を読み上げ
-      restartVoiceRecognition();
+
       return;
     } else if (
       commandText.includes("材料") ||
@@ -694,7 +681,7 @@ Reply with ONLY the category name from above. For example: "next_step", "show_in
       if (callbacks?.onShowIngredients) {
         callbacks.onShowIngredients(true);
       }
-      restartVoiceRecognition();
+
       return;
     } else if (
       commandText.includes("手順") ||
@@ -715,7 +702,7 @@ Reply with ONLY the category name from above. For example: "next_step", "show_in
       if (callbacks?.onShowIngredients) {
         callbacks.onShowIngredients(false); // 材料を非表示（手順を表示）
       }
-      restartVoiceRecognition();
+
       return;
     }
 
@@ -723,7 +710,6 @@ Reply with ONLY the category name from above. For example: "next_step", "show_in
     processWithLLM(processedText.replace("AIry", "").trim());
 
     // LLM処理後に音声認識を再開
-    restartVoiceRecognition();
   };
 
   return {
@@ -733,7 +719,6 @@ Reply with ONLY the category name from above. For example: "next_step", "show_in
     isSpeaking, // 音声読み上げ中かどうかの状態を追加
     startVoiceRecognition,
     stopVoiceRecognition,
-    restartVoiceRecognition,
     processManualTextInput, // 手動テキスト入力処理関数を追加
   };
 };
