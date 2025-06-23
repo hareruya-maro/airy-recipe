@@ -26,6 +26,9 @@ export const ModelDownloadModal = () => {
     isModelDownloaded,
     createModel,
     isModelInitializing, // モデル初期化状態を取得
+    isModelInitializationFailed, // モデル初期化失敗状態を取得
+    isDeletingModel, // モデル削除中状態を取得
+    deleteModel, // モデル削除関数
   } = useModelStore();
 
   // コンポーネントがマウントされたらダウンロードリスナーをセットアップ
@@ -96,10 +99,40 @@ export const ModelDownloadModal = () => {
               キャンセル
             </Button>
           </>
+        ) : isDeletingModel ? (
+          <>
+            <ProgressBar indeterminate style={styles.progressBar} />
+            <Text style={styles.progressText}>モデルを削除中...</Text>
+          </>
         ) : isModelInitializing ? (
           <>
             <ProgressBar indeterminate style={styles.progressBar} />
             <Text style={styles.progressText}>AIモデルを初期化中...</Text>
+          </>
+        ) : isModelInitializationFailed ? (
+          <>
+            <Text style={styles.errorText}>
+              AIモデルの初期化に失敗しました。モデルが正しくダウンロードされていない可能性があります。
+            </Text>
+            <View style={styles.buttonGroup}>
+              <Button
+                mode="contained"
+                onPress={deleteModel}
+                style={[styles.actionButton, styles.deleteButton]}
+                icon="delete"
+              >
+                削除
+              </Button>
+              <Button
+                mode="contained"
+                onPress={downloadModel}
+                style={[styles.actionButton, styles.downloadButton]}
+                icon="refresh"
+                disabled={isModelDownloaded}
+              >
+                再ダウンロード
+              </Button>
+            </View>
           </>
         ) : (
           <Button
@@ -172,5 +205,23 @@ const makeStyle = (theme: MD3Theme) =>
       backgroundColor: "#E0E0E0",
       borderRadius: 4,
       textAlign: "center",
+    },
+    errorText: {
+      marginVertical: 16,
+      color: "#D32F2F",
+      textAlign: "center",
+      fontWeight: "500",
+    },
+    buttonGroup: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      marginTop: 16,
+    },
+    actionButton: {
+      flex: 1,
+      marginHorizontal: 5,
+    },
+    deleteButton: {
+      backgroundColor: "#D32F2F",
     },
   });

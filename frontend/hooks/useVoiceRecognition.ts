@@ -529,28 +529,15 @@ export const useVoiceRecognition = (callbacks?: VoiceCallbacks) => {
       try {
         // Gemma 3モデルに判断させるためのプロンプト
         const prompt = `
-Analyze the user's statement and determine what basic command it represents.
-If a command is identified, determine which action should be taken from the following categories:
+次のどのコマンドカテゴリに当てはまるか判断してください:
+- next_step: 次へ進む (例: 次、進める、次のステップ)
+- previous_step: 前に戻る (例: 戻る、前へ、前のステップ) 
+- show_ingredients: 材料を表示 (例: 材料、ざいりょう)
+- show_steps: 手順を表示 (例: 手順、ステップ、作り方)
+- other_command: その他のコマンド
 
-- next_step: Move to the next step
-  Examples: "next", "next step", "go forward", "continue", "proceed", "次", "次へ", "次のステップ", 
-            "進める", "先に進む", "次に行く", "次のページ", "次に進む"
-- previous_step: Go back to the previous step
-  Examples: "back", "previous", "go back", "previous step", "return", "戻る", "前へ", "前のステップ", 
-            "戻って", "前に戻る", "一つ前", "前のページ"
-- show_ingredients: Display the ingredients list
-  Examples: "ingredients", "show ingredients", "what do I need", "materials", "材料", "材料を見せて", 
-            "材料リスト", "ざいりょう", "必要なもの", "何が必要"
-- show_steps: Display the steps/instructions list
-  Examples: "steps", "show steps", "instructions", "recipe", "procedure", "手順", "ステップ", "作り方", 
-            "レシピ", "手順を見せて", "てじゅん", "どうやって作る"
-- other_command: Any other command not listed above
-
-Look for the intent behind the statement, not just exact matches. Understand similar commands even if the phrasing is different.
-
-User's statement: "${commandText}"
-
-Reply with ONLY the category name from above. For example: "next_step", "show_ingredients", etc.
+ユーザー発言: "${commandText}"
+カテゴリ名だけを返答: 
 `;
 
         console.log("基本コマンド判定のプロンプト:", prompt);

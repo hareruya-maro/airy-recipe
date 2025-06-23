@@ -21,6 +21,9 @@ type ModelState = {
   modelHandle: number | null; // モデルハンドルを追加
   isModelInitializing: boolean; // モデル初期化中フラグを追加
   showInitCompleteMessage: boolean; // 初期化完了メッセージの表示状態
+  isModelInitializationFailed: boolean; // モデル初期化失敗フラグを追加
+  modelInitializationErrorMessage: string; // モデル初期化エラーメッセージ
+  isDeletingModel: boolean; // モデル削除中フラグを追加
 
   // アクション
   checkIfModelDownloaded: () => Promise<boolean>;
@@ -34,6 +37,8 @@ type ModelState = {
   createModel: () => Promise<number | null>; // モデルを作成し、ハンドルを返す
   releaseModel: () => Promise<void>; // モデルを解放する
   hideInitCompleteMessage: () => void; // 初期化完了メッセージを非表示にする
+  hideInitFailureMessage: () => void; // 初期化失敗メッセージを非表示にする
+  deleteModel: () => Promise<boolean>; // モデルを削除する
 };
 
 export const useModelStore = create<ModelState>((set, get) => ({
@@ -46,6 +51,9 @@ export const useModelStore = create<ModelState>((set, get) => ({
   modelHandle: null, // 初期値はnull
   isModelInitializing: false, // 初期値はfalse
   showInitCompleteMessage: false, // 初期値はfalse
+  isModelInitializationFailed: false, // 初期値はfalse
+  modelInitializationErrorMessage: "", // 初期値は空文字
+  isDeletingModel: false, // 初期値はfalse
 
   // モデルがダウンロード済みかどうかを確認する
   checkIfModelDownloaded: async () => {
@@ -205,7 +213,10 @@ export const useModelStore = create<ModelState>((set, get) => ({
       set({
         lastMessage: `モデル作成エラー: ${e.message}`,
         isModelInitializing: false,
+        isModelInitializationFailed: true,
+        modelInitializationErrorMessage: e.message,
       });
+
       return null;
     }
   },
@@ -228,5 +239,50 @@ export const useModelStore = create<ModelState>((set, get) => ({
   // 初期化完了メッセージを非表示にする
   hideInitCompleteMessage: () => {
     set({ showInitCompleteMessage: false });
+  },
+
+  // 初期化失敗メッセージを非表示にする
+  hideInitFailureMessage: () => {
+    LayoutAnimation.easeInEaseOut();
+    set({ isModelInitializationFailed: false });
+  },
+
+  // モデルを削除する
+  deleteModel: async () => {
+    try {
+      // モデルが現在使用中なら解放する
+      if (get().modelHandle !== null) {
+        await get().releaseModel();
+      }
+
+      // 削除中フラグを設定
+      set({ isDeletingModel: true, lastMessage: "モデルを削除しています..." });
+
+      // モデルの削除（適切なAPIで置き換える）
+      await ExpoLlmMediapipe.deleteDownloadedModel(MODEL_NAME);
+
+      console.log(`${MODEL_NAME}を削除しました`);
+
+      // ステートをリセット
+      set({
+        isDeletingModel: false,
+        isModelDownloaded: false,
+        isModelInitializationFailed: false,
+        modelInitializationErrorMessage: "",
+        lastMessage: "モデルを削除しました。再ダウンロードできます。",
+      });
+
+      // モデル一覧を更新
+      await get().fetchDownloadedModels();
+
+      return true;
+    } catch (e: any) {
+      console.error(`モデル削除エラー: ${e.message}`);
+      set({
+        isDeletingModel: false,
+        lastMessage: `モデル削除エラー: ${e.message}`,
+      });
+      return false;
+    }
   },
 }));
