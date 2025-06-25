@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AIry Recipe - Web版について</title>
+  <style>
+    body {
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 40px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #eee;
+    }
+
+    h1 {
+      color: #2c3e50;
+    }
+
+    h2 {
+      color: #3498db;
+      margin-top: 30px;
+    }
+
+    .feature-list {
+      background-color: #f8f9fa;
+      padding: 20px;
+      border-radius: 5px;
+      margin: 20px 0;
+    }
+
+    .feature-list li {
+      margin-bottom: 10px;
+    }
+
+    .links {
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 1px solid #eee;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 5px 10px;
+      background-color: #e74c3c;
+      color: white;
+      border-radius: 3px;
+      font-size: 0.8em;
+      margin-right: 8px;
+    }
+
+    footer {
+      margin-top: 50px;
+      text-align: center;
+      font-size: 0.9em;
+      color: #7f8c8d;
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>AIry Recipe - ハッカソン提出作品</h1>
+    <p>2025年6月26日</p>
+  </header>
+
+  <main>
+    <section>
+      <h2>Web版提供が困難な理由について</h2>
+      <p>AIry Recipeは、食材の画像認識とAIによるレシピ提案を組み合わせたモバイルアプリケーションです。以下の理由により、Web版での提供が難しい状況となっております。</p>
+
+      <div class="feature-list">
+        <h3>Web版での実装が困難な主要機能：</h3>
+        <ul>
+          <li><span class="badge">音声機能</span> 端末の音声認識（STT）と発話（TTS）機能を活用したハンズフリーでのレシピ操作</li>
+          <li><span class="badge">カメラ機能</span> カメラを利用したレシピの撮影機能</li>
+          <li><span class="badge">ローカルLLM</span> デバイス上で動作するローカルLLMを用いたオフライン対応のレシピ操作機能</li>
+        </ul>
+      </div>
+
+      <h2>技術的詳細</h2>
+      <p>AIry Recipeは以下の技術スタックを利用しており、これらの多くはWebブラウザ環境での十分なサポートがありません：</p>
+      <ul>
+        <li>Expo/React Native - モバイルネイティブ機能へのアクセスを前提とした開発環境</li>
+        <li>ネイティブ音声API - 各プラットフォーム固有の高精度な音声認識および合成API</li>
+        <li>カメラハードウェアアクセス - リアルタイム画像処理と食材認識のためのネイティブカメラ統合</li>
+        <li>オンデバイスLLM - プライバシーとレスポンス速度を考慮したデバイス内AI処理</li>
+      </ul>
+
+      <h2>代替方法</h2>
+      <p>Web版の代わりに、以下のモバイルアプリをダウンロードしてご利用いただけます：</p>
+      <ul>
+        <li><strong>iOSアプリ</strong>: <a href="https://testflight.apple.com/join/C5hxXrgb">TestFlight経由でダウンロード</a></li>
+        <li><strong>Androidアプリ</strong>: <a
+            href="https://play.google.com/store/apps/details?id=com.apps.hal.airyrecipe">Google Playでダウンロード</a></li>
+      </ul>
+      <p>なお、アプリはサイズが3GBを超えるため、Wi-Fi環境でのダウンロードを推奨します。</p>
+      <p>また、端末の性能等によって、Local LLMの動作検証はできない場合があります。</p>
+    </section>
+
+    <section class="links">
+      <h2>連絡先・問い合わせ</h2>
+      <p>ご質問やフィードバックがございましたら、以下までご連絡ください。</p>
+      <p>X: <a href="https://x.com/HAL1986____">@HAL1986____</a></p>
+    </section>
+  </main>
+
+  <footer>
+    <p>© 2025 HAL - ハッカソン提出作品</p>
+  </footer>
+</body>
+
+</html>
