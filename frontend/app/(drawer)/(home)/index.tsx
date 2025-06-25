@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Platform,
   RefreshControl,
   StyleSheet,
   TouchableOpacity,
@@ -115,7 +116,7 @@ export default function HomeScreen() {
       );
 
       // モデルがダウンロードされていない場合、モーダルを表示
-      if (!isDownloaded) {
+      if (Platform.OS === "android" && !isDownloaded) {
         showDownloadModal();
       } else {
         // モデルがダウンロード済みの場合、モデルを作成
@@ -200,7 +201,7 @@ export default function HomeScreen() {
 
   return (
     <>
-      <ModelDownloadModal />
+      {Platform.OS === "android" && <ModelDownloadModal />}
 
       <Appbar.Header>
         <Appbar.Action icon="menu" onPress={openDrawer} />

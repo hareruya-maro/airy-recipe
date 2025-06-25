@@ -3,7 +3,7 @@ import ExpoLlmMediapipe, {
   DownloadProgressEvent,
   NativeModuleSubscription,
 } from "expo-llm-mediapipe";
-import { LayoutAnimation } from "react-native";
+import { LayoutAnimation, Platform } from "react-native";
 import { create } from "zustand";
 
 // モデルのURL（実際のプロジェクトのモデルURLに置き換えてください）
@@ -185,13 +185,21 @@ export const useModelStore = create<ModelState>((set, get) => ({
       // モデル初期化中フラグをセット
       set({ isModelInitializing: true });
 
-      const handle = await ExpoLlmMediapipe.createModelFromDownloaded(
-        MODEL_NAME,
-        1024, // maxTokens
-        40, // topK
-        0.7, // temperature
-        42 // seed
-      );
+      const handle = await (Platform.OS === "ios"
+        ? ExpoLlmMediapipe.createModelFromAsset(
+            MODEL_NAME,
+            1024, // maxTokens
+            40, // topK
+            0.7, // temperature
+            42 // seed
+          )
+        : ExpoLlmMediapipe.createModelFromDownloaded(
+            MODEL_NAME,
+            1024, // maxTokens
+            40, // topK
+            0.7, // temperature
+            42 // seed
+          ));
 
       console.log(`モデルが作成されました。ハンドル: ${handle}`);
       LayoutAnimation.easeInEaseOut();
